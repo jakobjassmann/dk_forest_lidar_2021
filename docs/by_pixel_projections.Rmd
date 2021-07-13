@@ -133,11 +133,16 @@ pal <- colorFactor(c("blue", "red"), domain = c("High" = 1,
 
 leaflet() %>% 
   addProviderTiles(providers$Esri.WorldImagery) %>%
-  addRasterImage(forest_qual, colors = pal, opacity = 0.8) %>%
+  addRasterImage(forest_qual, colors = pal, opacity = 1,
+                 method = "ngb", group = "forest_qual") %>%
   addLegend(pal = pal, values = c(1,2),
             labFormat = labelFormat(transform = function(x){
               c("High", "Low")[x]
             }),
-    title = "Projected Forest Quality by Pixel") 
+    title = "Projected Forest Quality by Pixel") %>%
+    addLayersControl(
+    overlayGroups = c("forest_qual"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
 ```
 
