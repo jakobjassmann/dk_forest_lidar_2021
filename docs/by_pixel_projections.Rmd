@@ -1,7 +1,5 @@
 ---
-title: "DK Forest LiDAR - By Pixel Projections"
-author: "Jakob Assmann"
-date: "13/7/2021"
+title: "DK Forest LiDAR - By Pixel Projections of Forest Quality"
 output: html_document
 ---
 
@@ -15,7 +13,8 @@ library(gbm)
 library(sf)
 ```
 
-# DK Forest LiDAR - By Pixel Projections of Forest Quality 
+
+[Fast forward to the bottom](#aarhus-region) of this document for the map. 
 
 ## Boosted Regression Tree Model
 ```{r }
@@ -122,7 +121,8 @@ Here are the variables that make up the 20 most important predictors:
 # Check variable importance
 varImp(gbm_fit)
 ```
-## Aarhus Region Teaser
+
+## Aarhus Region {#aarhus-region}
 Here is a projection of the model results for the Aarhus region:
 
 ``` {r warning = FALSE}
@@ -132,18 +132,12 @@ pal <- colorFactor(c("blue", "red"), domain = c("High" = 1,
   na.color = "transparent")
 
 leaflet() %>% 
-  addTiles(group = "Open Street Map") %>%
-  addProviderTiles(providers$Esri.WorldImagery, group = "Sattelite (ESRI)") %>%
+  addProviderTiles(providers$Esri.WorldImagery) %>%
   addRasterImage(forest_qual, colors = pal, opacity = 0.8) %>%
   addLegend(pal = pal, values = c(1,2),
             labFormat = labelFormat(transform = function(x){
               c("High", "Low")[x]
             }),
-    title = "Projected Forest Quality by Pixel") %>%
-  addLayersControl(
-    baseGroups = c("Open Street Map", "Sattelite (ESRI)"),
-    overlayGroups = c("Projections"),
-    options = layersControlOptions(collapsed = FALSE)
-  )
+    title = "Projected Forest Quality by Pixel") 
 ```
 
