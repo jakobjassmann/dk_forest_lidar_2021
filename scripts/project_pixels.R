@@ -5,6 +5,8 @@
 library(caret)
 library(gbm)
 library(raster)
+library(parallel)
+library(sf)
 
 # Load model
 load("data/final_gbm_model_pixel.Rda")
@@ -26,7 +28,8 @@ ecodes_tiles <- gsub(".*([0-9]{4}_[0-9]{3}).tif", "\\1", ecodes_tiles)
 project_tile <- function(tile_id, 
                          ecodes_vars_sub,
                          inland_mask,
-                         sea_mask){
+                         sea_mask,
+                         gbm_fit){
   # Load rasters as stack
   tile_stack <- stack(paste0(ecodes_vars_sub, "/",
                            gsub(".*/(.*)$", "\\1", ecodes_vars_sub),
@@ -38,9 +41,39 @@ project_tile <- function(tile_id,
   tile_stack <- mask(tile_stack, raster(paste0(sea_mask, "/sea_mask_", tile_id, ".tif")))
   
   # Mask non forest from raster
-  # insert code here!
-  
+  forest_mask <- raster("data/projections/basemap2016_forest_mask.tif")
+  forest_mask_cropped <- crop(forest_mask, tile_stack)
+  tile_stack <- mask(tile_stack, forest_mask_cropped) 
+
   # predict raster
-  predictons_raster <- predict(tile_stack, gbm_fit)
+  predictions_raster <- predict(tile_stack, gbm_fit)
   
+  # write out raster
+  writeRaster(predictions_raster, 
+               paste0("data/projections/by_pixel/forest_quality_by_pixel_" , tile_id, ".tif"),
+               overwrite = T)
+  
+  # Return nothing
+  return(NULL)
 }
+
+# Prepare parallel environmnet
+cl <- makeCluster(54)
+clusterEvalQ(cl, library(raster))
+clusterEvalQ(cl, library(gbm))
+
+# Run projections
+parLapply(cl, ecodes_tiles,
+          project_tile,
+          ecodes_vars_sub = ecodes_vars_sub,
+          inland_mask = inland_mask,
+          sea_mask = sea_mask,
+          gbm_fit = gbm_fit)
+
+# Stop cluster
+stopCluster(cl)
+
+# Generate VRT file
+gdal_utils("buildvrt",
+           source = list.files("data/projections/by_pixel/",".tif$", full.names = T),
+           destination = "data/projections/by_pixel/forest_quality_by_pixel.vrt")

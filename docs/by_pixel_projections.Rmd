@@ -1,0 +1,149 @@
+---
+title: "DK Forest LiDAR - By Pixel Projections"
+author: "Jakob Assmann"
+date: "13/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(raster)
+library(tidyverse)
+library(leaflet)
+library(caret)
+library(gbm)
+library(sf)
+```
+
+# DK Forest LiDAR - By Pixel Projections of Forest Quality 
+
+## Boosted Regression Tree Model
+```{r }
+# Load data
+load("D:/Jakob/dk_forest_lidar_2021/data/pixel_sample_10k.Rda")
+
+# Reshape data 
+combined_sample <- combined_sample %>% map(function(x) dplyr::select(x, -forest_class)) %>%
+  reduce(full_join, by = "sample_id") %>% full_join(combined_sample[[1]][,1:2], 
+                                                    ., by = "sample_id")
+# Filter out masked data and na values   
+combined_sample <- combined_sample %>% 
+  filter(!is.na(inland_water_mask)) %>%
+  filter(!is.na(sea_mask)) %>%
+  select(-contains("mask")) %>%
+  mutate(forest_class = factor(forest_class)) %>%
+  na.omit()
+
+# Remove - from variable names
+names(combined_sample) <- gsub("-", ".", names(combined_sample))
+
+# Slit dataset into training and control
+set.seed(32423)
+index_training <- createDataPartition(
+  y = combined_sample$forest_class,
+  p = 0.8,
+  list = F
+)
+train_data <- combined_sample[index_training, -1]
+test_data <- combined_sample[-index_training, -1]
+
+# Load model 
+load("D:/Jakob/dk_forest_lidar_2021/data/final_gbm_model_pixel.Rda")
+```
+
+The model uses the EcoDes-DK15 dataset to predict forest quality. Annotations of forest quality were provided by polygons from various Danish agencies:
+
+| forest quality | annotation source |
+| --- | --- |
+| high | §15 forest polygons |
+| high | §25 forest polygons |
+| high | private old growth |
+| low | ikke §25 forests polygons |
+| low | NST plantation polygons |
+
+The polygons were bagged together in group by forest quality class. We then obtained a simple random sample of 10k pixels across Denmark for each group. 
+
+``` {r }
+# Load shapefiles
+high_quality <- list.files("../data/response/high_quality_forests/", 
+                           ".shp", 
+                           recursive = T,
+                           full.names = T) %>%
+  map(function(x) {
+    sf_object <- read_sf(x)
+    sf_object <- sf_object %>%
+      select(!everything()) %>%
+      mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
+                                "_", 1:n()),
+             forest_class = "high")
+    }) %>%
+  bind_rows() 
+low_quality <- list.files("../data/response/low_quality_forests/", 
+                          "shp$", 
+                          recursive = T,
+                          full.names = T) %>%
+  map(function(x) {
+    sf_object <- read_sf(x)
+    sf_object <- sf_object %>%
+      select(!everything()) %>%
+      mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
+                                "_", 1:n()),
+             forest_class = "low")
+  }) %>%
+  bind_rows() 
+combined <- rbind(high_quality, low_quality) %>% st_transform(4326)
+
+# # Make leaflet
+# m <- leaflet(combined) %>% setView(lng = 10.208681, lat = 56.156397, zoom = 10) %>% 
+#   addProviderTiles(providers$Esri.WorldImagery) %>%
+#     addPolygons(
+#     color = ~forest_class,
+#     fillOpacity = 0.5
+#   )
+
+```
+
+The resulting 20k pixel samples from the EcoDes-DK15
+dataset were then used to train three types of binary classifier models (random forests, gradient boosted regression trees and a simple multilayer perceptron nural network). Prior hyperparameter tuning,
+the three model types performed similary and we chose to progress with the boosted regression tree model.
+
+We used 80% of the pixels for training and kept 20% aside for validation (simple random split). Addtionally, the modeltraining was carried out using 10-fold repeat crossvalidation with the 80% training data. 
+
+The overall model performance is good ~ 82% accuracy. See details below:
+
+``` {r }
+# Validate on test set
+test_preds <- predict(gbm_fit, newdata = test_data)
+confusionMatrix(data = test_preds, test_data$forest_class)
+```
+
+Here are the variables that make up the 20 most important predictors:
+``` {r}
+# Check variable importance
+varImp(gbm_fit)
+```
+## Aarhus Region Teaser
+Here is a projection of the model results for the Aarhus region:
+
+``` {r warning = FALSE}
+forest_qual <- raster("D:/Jakob/dk_forest_lidar_2021/data/projections/by_pixel/forest_quality_by_pixel.vrt")
+pal <- colorFactor(c("blue", "red"), domain = c("High" = 1,
+                                                "Low" = 2),
+  na.color = "transparent")
+
+leaflet() %>% 
+  addTiles(group = "Open Street Map") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Sattelite (ESRI)") %>%
+  addRasterImage(forest_qual, colors = pal, opacity = 0.8) %>%
+  addLegend(pal = pal, values = c(1,2),
+            labFormat = labelFormat(transform = function(x){
+              c("High", "Low")[x]
+            }),
+    title = "Projected Forest Quality by Pixel") %>%
+  addLayersControl(
+    baseGroups = c("Open Street Map", "Sattelite (ESRI)"),
+    overlayGroups = c("Projections"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+```
+
