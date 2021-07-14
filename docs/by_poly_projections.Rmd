@@ -1,0 +1,153 @@
+---
+title: "DK Forest LiDAR - By Polygon Projections of Forest Quality"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(raster)
+library(tidyverse)
+library(leaflet)
+library(caret)
+library(gbm)
+library(sf)
+```
+
+
+[Fast forward to the bottom](#aarhus-region) of this document for the map. 
+
+## Boosted Regression Tree Model
+```{r }
+# Load data
+load("D:/Jakob/dk_forest_lidar_2021/data/poly_training_tidy.Rda")
+
+# Remove NAs and mask data
+poly_training_data <- na.omit(poly_training_data) %>%
+  dplyr::select(-contains("mask"))
+
+# Slit dataset into training and control
+set.seed(32423)
+index_training <- createDataPartition(
+  y = poly_training_data$forest_class,
+  p = 0.8,
+  list = F
+)
+train_data <- st_drop_geometry(poly_training_data)[index_training, -1]
+test_data <- st_drop_geometry(poly_training_data)[-index_training, -1]
+
+# Load model 
+load("D:/Jakob/dk_forest_lidar_2021/data/final_gbm_model_poly.Rda")
+```
+
+The model uses the EcoDes-DK15 dataset to predict forest quality. Annotations of forest quality were provided by polygons from various Danish agencies:
+
+| forest quality | annotation source |
+| --- | --- |
+| high | §15 forest polygons |
+| high | §25 forest polygons |
+| high | private old growth |
+| low | ikke §25 forests polygons |
+| low | NST plantation polygons |
+
+The polygons were bagged together in groups by forest quality To provide a
+balanced training dataset we randomly subsampled the low quality polygons down to n = 10k.
+The result was a training dataset of ~20k polygons. For each polygon we extracted
+zonal statistics (mean and sd weighted by cell area) for all EcoDes-DK15 variables. 
+
+``` {r }
+
+
+# # Make leaflet
+# m <- leaflet(combined) %>% setView(lng = 10.208681, lat = 56.156397, zoom = 10) %>% 
+#   addProviderTiles(providers$Esri.WorldImagery) %>%
+#     addPolygons(
+#     color = ~forest_class,
+#     fillOpacity = 0.5
+#   )
+
+```
+
+We split the polygon data into two: 80% for testing and 20% for training. Models
+were then trained with 10 fold cross validation on the 80% trraining data. 
+
+We trained random forest and boosted regression tree models. The resulting 
+models performed similarly. Hyperparameter tuning had little influence on the 
+performance in the validation based on the test data set. 
+
+The overall model performance is okay ~76% accuracy, slightly worse than the
+by-pixel models. See details below:
+
+``` {r }
+# Validate on test set
+test_preds <- predict(gbm_fit, newdata = test_data)
+confusionMatrix(data = test_preds, as.factor(test_data$forest_class))
+```
+
+Here are the variables that make up the 20 most important predictors:
+``` {r}
+# Check variable importance
+varImp(gbm_fit)
+```
+
+## Aarhus Region {#aarhus-region}
+Here is a projection of the model results for the Aarhus region:
+
+``` {r warning = FALSE}
+# Set area of interest (Aarhus region)
+aoi <- st_polygon(list(matrix(c(10.284891, 56.040591, 
+                                10.284891,56.306278,
+                                9.876908,56.306278,
+                                9.876908,56.040591,
+                                10.284891, 56.040591), 
+                              ncol = 2,
+                              byrow = T))) %>%
+  st_sfc(crs = 4326) %>% 
+  st_transform(st_crs(poly_training_data))
+
+# Subset training data
+poly_training_data_sub <- poly_training_data[st_intersects(aoi, poly_training_data)[[1]],] %>%
+  st_transform(4326) 
+
+# Load projections data
+load("D:/Jakob/dk_forest_lidar_2021/data/projections/poly_projections_data_tidy.Rda")
+poly_projection_data_tidy_sub <- poly_projection_data_tidy[st_intersects(st_transform(aoi, st_crs(poly_projection_data_tidy)), poly_projection_data_tidy)[[1]],] %>%
+  st_transform(4326) %>% select(-contains("mask")) %>% na.omit
+# Remove - from variable names
+names(poly_projection_data_tidy_sub) <- gsub("-", ".", names(poly_projection_data_tidy_sub))
+
+# Predict forest class
+poly_projection_data_tidy_sub$forest_class <- predict(gbm_fit, newdata = poly_projection_data_tidy_sub)
+
+# Convert to factor
+poly_training_data_sub$forest_class_fact <- factor(poly_training_data_sub$forest_class)
+poly_training_data_sub$forest_class_num <- as.numeric(poly_training_data_sub$forest_class_fact)
+poly_projection_data_tidy_sub$forest_class_num <- as.numeric(poly_projection_data_tidy_sub$forest_class)
+
+factpal <- colorFactor(c("blue", "red"), domain = c(1,2))
+
+leaflet() %>% 
+  addProviderTiles(providers$Esri.WorldImagery) %>%
+  addPolygons(data = poly_training_data_sub,
+              stroke = FALSE,
+              color = ~factpal(forest_class_num),
+              fillOpacity = 1,
+              group = "Training Data") %>%  
+  addPolygons(data = poly_projection_data_tidy_sub,
+              stroke = FALSE,
+              color = ~factpal(forest_class_num),
+              fillOpacity = 1,
+              group = "Predicted Quality") %>%
+    addLegend(pal = factpal, values = c(1,2),
+            labFormat = labelFormat(transform = function(x){
+              c("High", "Low")[x]
+            }),
+    title = "Forest Quality") %>%
+  addLayersControl(
+    overlayGroups = c("Training Data", "Predicted Quality"),
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>% 
+  hideGroup("Training Data")
+```
+
+Note: The training data shown is the subset of training polygons within the 
+Aarhus region. The model was trained on a nationwide training data set. 
