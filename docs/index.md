@@ -3,6 +3,6 @@ Classifciations of Denmark's forest by quality using the [EcoDes-DK15 dataset](h
 
 # First full classification models for the Aarhus Region
 1. [By pixel projections.](by_pixel_projections.html)
-2. [By polygon projections.](by_polygon_projections.html) (NB: currently not working.)
+2. [By polygon projections.](by_poly_projections.html) 
 
-[last update: 13 July 2021]
+[last update: 14 July 2021]
