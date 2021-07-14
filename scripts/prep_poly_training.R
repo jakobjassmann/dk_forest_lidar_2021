@@ -55,7 +55,7 @@ ecodes_vrt <- ecodes_vrt[!grepl("building",ecodes_vrt)]
 # add full file name
 ecodes_vrt <- paste0("D:/Jakob/dk_nationwide_lidar/data/outputs/", ecodes_vrt)
 
-# Transofrm polygons to raster data CRS
+# Transform polygons to raster data CRS
 combined_polys <- st_transform(combined_polys,
                                st_crs(raster("D:/Jakob/dk_nationwide_lidar/data/outputs/dtm_10m/dtm_10m_6049_684.tif")))
 
