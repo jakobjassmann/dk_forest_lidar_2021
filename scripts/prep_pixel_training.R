@@ -55,8 +55,8 @@ low_quality_sample_coords <- st_sample(low_quality, 100000) %>%
   mutate(sample_id = paste0(forest_class, "_", 1:n()))
 save(high_quality_sample_coords, file = "data/high_quality_pixel_sample.Rda")
 save(low_quality_sample_coords, file = "data/low_quality_pixel_sample.Rda")
-#load("data/high_quality_pixel_sample.Rda")
-#load("data/low_quality_pixel_sample.Rda")
+# load("data/high_quality_pixel_sample.Rda")
+# load("data/low_quality_pixel_sample.Rda")
 
 # transform geometries to raster CRS
 target_crs <- st_crs(raster("D:/Jakob/dk_nationwide_lidar/data/outputs/dtm_10m/dtm_10m_6049_684.tif"))
@@ -71,6 +71,7 @@ combined_sample_coords <- rbind(high_quality_sample_coords,
   as_Spatial() %>%
   vect()
 save(combined_sample_coords, file = "data/combined_pixel_sample.Rda")
+# load("data/combined_pixel_sample.Rda")
 
 # extract sample across all vrts (except point_source_ids)
 extract_fun <- function(index){
@@ -84,18 +85,25 @@ extract_fun <- function(index){
   return(extractions)
 }
 
-# test <- extract_fun(1)
 system.time(combined_sample <- lapply(#cl, 
                          seq_along(ecodes_vrt),
                          extract_fun))
 save(combined_sample, file = "data/pixel_sample.Rda")
-
+# load("data/pixel_sample.Rda")
 
 # Combine dataframes
 pixel_training_data_raw <- combined_sample %>% map(function(x) dplyr::select(x, -forest_class)) %>%
-  reduce(full_join, by = "sample_id") %>% full_join(rbind(high_quality_sample_coords,
+  reduce(full_join, by = "sample_id") %>% full_join(rbind(high_quality_sample_coords, 
                                                           low_quality_sample_coords), 
                                                     ., by = "sample_id")
+
+# Extract forest type data (coniferous vs. broadleaf)
+forest_type <- rast("data/conif_vs_broadleaf/dk_forest_con_vs_dec.tif")
+pixel_training_data_raw$forest_type <- terra::extract(forest_type, combined_sample_coords)[,2]
+
+# Export final data
+save(pixel_training_data_raw, file = "data/pixel_sample_combined.Rda")
+
 # Quick PCA
 pc <- pixel_training_data_raw %>% 
   filter(!is.na(inland_water_mask)) %>%
