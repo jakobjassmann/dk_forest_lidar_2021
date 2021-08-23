@@ -28,6 +28,24 @@ NAvalue(base_map) <- 0
 writeRaster(base_map,
             "data/projections/basemap2016_forest_mask.tif",
             overwrite = T)
+
+## Now using only the 110000 forest class and not the data from the agricultural census
+# Load basemap 
+base_map <- raster("data/projections/Basemap02_public/export/LU_02_20161.tif")
+
+
+# turn the  forest layers (110000) into a binary mask
+base_map <- reclassify(base_map, c(1, 109999, NA, 
+                                   109999, 110001, 1,
+                                   110001, 999000, NA
+))
+
+NAvalue(base_map) <- 0
+
+# export raster
+writeRaster(base_map,
+            "data/projections/basemap2016_forest_mask_no_agri_forests.tif",
+            overwrite = T)
 # 
 # # Load shapefiles for p15 and p25 forests
 # p15_shp <- shapefile("data/p15_forests/shapefiles/skov_kortlaegning_2016_2018.shp")
