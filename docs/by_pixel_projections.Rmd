@@ -19,17 +19,18 @@ library(sf)
 ## Boosted Regression Tree Model
 ```{r }
 # Load data
-load("D:/Jakob/dk_forest_lidar_2021/data/pixel_sample_10k.Rda")
+load("D:/Jakob/dk_forest_lidar_2021/data/pixel_sample_combined.Rda")
 
-# Reshape data 
-combined_sample <- combined_sample %>% map(function(x) dplyr::select(x, -forest_class)) %>%
-  reduce(full_join, by = "sample_id") %>% full_join(combined_sample[[1]][,1:2], 
-                                                    ., by = "sample_id")
+# # Reshape data 
+# combined_sample <- combined_sample %>% map(function(x) dplyr::select(x, -forest_class)) %>%
+#   reduce(full_join, by = "sample_id") %>% full_join(combined_sample[[1]][,1:2], 
+#                                                     ., by = "sample_id")
 # Filter out masked data and na values   
-combined_sample <- combined_sample %>% 
+combined_sample <- pixel_training_data_raw %>% 
+  st_drop_geometry() %>%
   filter(!is.na(inland_water_mask)) %>%
   filter(!is.na(sea_mask)) %>%
-  select(-contains("mask")) %>%
+  dplyr::select(-contains("mask")) %>%
   mutate(forest_class = factor(forest_class)) %>%
   na.omit()
 
@@ -43,8 +44,8 @@ index_training <- createDataPartition(
   p = 0.8,
   list = F
 )
-train_data <- combined_sample[index_training, -1]
-test_data <- combined_sample[-index_training, -1]
+train_data <- combined_sample[index_training,]
+test_data <- combined_sample[-index_training,]
 
 # Load model 
 load("D:/Jakob/dk_forest_lidar_2021/data/final_gbm_model_pixel.Rda")
@@ -71,7 +72,7 @@ high_quality <- list.files("../data/response/high_quality_forests/",
   map(function(x) {
     sf_object <- read_sf(x)
     sf_object <- sf_object %>%
-      select(!everything()) %>%
+      dplyr::select(!everything()) %>%
       mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
                                 "_", 1:n()),
              forest_class = "high")
@@ -84,7 +85,7 @@ low_quality <- list.files("../data/response/low_quality_forests/",
   map(function(x) {
     sf_object <- read_sf(x)
     sf_object <- sf_object %>%
-      select(!everything()) %>%
+      dplyr::select(!everything()) %>%
       mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
                                 "_", 1:n()),
              forest_class = "low")
@@ -119,7 +120,7 @@ confusionMatrix(data = test_preds, test_data$forest_class)
 Here are the variables that make up the 20 most important predictors:
 ``` {r}
 # Check variable importance
-varImp(gbm_fit)
+summary(gbm_fit, plotit  = F)
 ```
 
 ## Aarhus Region {#aarhus-region}

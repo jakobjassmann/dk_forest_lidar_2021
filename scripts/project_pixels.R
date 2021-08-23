@@ -36,6 +36,17 @@ project_tile <- function(tile_id,
                            "_", tile_id, ".tif"))
   names(tile_stack) <- gsub("_[0-9]{4}_[0-9]{3}", "", names(tile_stack))
   
+  # Load and add forest_type data
+  forest_type <- raster("data/conif_vs_broadleaf/dk_forest_con_vs_dec.tif")
+  forest_type <- crop(forest_type, tile_stack)
+  forest_typecl <- forest_type == 1
+  names(forest_typecl) <- "forest_typecl"
+  forest_typecon <- forest_type == 2
+  names(forest_typecon) <- "forest_typecon"
+  forest_typedec <- forest_type == 3
+  names(forest_typedec) <- "forest_typecon"
+  tile_stack <- stack(tile_stack, forest_typecl, forest_typecon, forest_typedec)
+  
   # Mask water from raster sack
   tile_stack <- mask(tile_stack, raster(paste0(inland_mask, "/inland_water_mask_", tile_id, ".tif")))
   tile_stack <- mask(tile_stack, raster(paste0(sea_mask, "/sea_mask_", tile_id, ".tif")))
@@ -56,8 +67,9 @@ project_tile <- function(tile_id,
   # Return nothing
   return(NULL)
 }
+# project_tile(ecodes_tiles[12], ecodes_vars_sub, inland_mask, sea_mask, gbm_fit)
 
-# Prepare parallel environmnet
+# Prepare parallel environmemt
 cl <- makeCluster(54)
 clusterEvalQ(cl, library(raster))
 clusterEvalQ(cl, library(gbm))

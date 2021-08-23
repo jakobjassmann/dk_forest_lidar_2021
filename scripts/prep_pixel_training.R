@@ -10,33 +10,70 @@ library(sf)
 library(tidyverse)
 library(purrr)
 library(dplyr)
+library(readxl)
+
+# Set seed for pseudo random numbers
+set.seed(2308)
 
 # Set path to EcoDes-DK15 data dtm_10m (this will form the base for the rasters)
 dtm_10m_folder <- "D:\\Jakob\\dk_nationwide_lidar\\data\\outputs\\dtm_10m\\"
 
-# List drm_10m files (shell is faster than list.files here)
+# List dtm_10m files (shell is faster than list.files here)
 dtm_10m_files <- shell(paste0("dir /b ", dtm_10m_folder, "*.tif"), intern = T)
 
-# Load shapefiles
-high_quality <- list.files("data/response/high_quality_forests/", 
+# Load geometries for high quality forests
+high_quality <- list.files("data/response_variables/high_quality_forests/", 
                            ".shp", 
                            recursive = T,
                            full.names = T) %>%
   map(read_sf) %>%
+  map(function(x){
+    if(sum("tilskudsor" %in% names(x)) > 0) x <- filter(x, tilskudsor == "Privat urørt skov")
+    select(x, !everything())
+    }) %>%
+  bind_rows() 
+
+## Load and prep geometries for low quality forests
+# Plantations geometries and meta data
+plantations <- read_sf("data/response_variables/low_quality_forests/NST_plantations/LitraPolygoner_region/LitraPolygoner_region.shp")
+plantations_meta <- read_excel("data/response_variables/low_quality_forests/NST_plantations/NST  2019 08012019 ber 16012020 til bios_au.xlsx") 
+# Helper function to classify age bins
+sort_into_age_bins <- function(Aldersklasse){
+  case_when(Aldersklasse > 0 & Aldersklasse <= 10 ~ "0_to_10",
+            Aldersklasse > 10 & Aldersklasse <= 25 ~ "10_to_25",
+            Aldersklasse > 25 & Aldersklasse <= 50 ~ "25_to_50",
+            Aldersklasse > 50 & Aldersklasse <= 75 ~ "50_to_75",
+            Aldersklasse > 75 & Aldersklasse <= 100 ~ "75_to_100",
+            TRUE ~ "NA") 
+}
+# Data cleaning
+plantations_meta <- plantations_meta %>%
+  select(Ident, Aldersklasse, `ANV 4`, `Allerede urørt`, Status) %>%
+  filter(`ANV 4` != 1) %>%
+  filter(`Allerede urørt` != "Urørt") %>%
+  filter(Status != "H") %>%
+  na.omit() %>%
+  mutate(age_bin = sort_into_age_bins(Aldersklasse)) %>%
+  filter(age_bin != "NA") %>% 
+  group_by(age_bin) %>%
+  sample_n(1000)
+# Filter geometries
+plantations <- plantations %>%
+  filter(UNIKID %in% plantations_meta$Ident)
+# Add ikke p25 geometries
+low_quality <- read_sf("data/response_variables/low_quality_forests/ikke_p25/ikkeP25_skov.shp") %>%
+  list(., plantations) %>%
   map(function(x) select(x, !everything())) %>%
   bind_rows() 
-low_quality <- list.files("data/response/low_quality_forests/", 
-                         "shp$", 
-                         recursive = T,
-                         full.names = T) %>%
-  map(read_sf) %>%
-  map(function(x) select(x, !everything())) %>%
-  bind_rows() 
+
+# Save geometries
+save(high_quality, file = "data/high_quality_polys.Rda")
+save(low_quality, file = "data/low_quality_polys.Rda")
 
 # Load list of Ecodes-DK variabels
 ecodes_vrt <- read.table("D:/Jakob/dk_nationwide_lidar/data/outputs/list_of_vrts.txt",
                          stringsAsFactors = F)[,1]
-# Remove unneded variables
+# Remove uneeded variables
 ecodes_vrt <- ecodes_vrt[!grepl("point_count",ecodes_vrt)]
 ecodes_vrt <- ecodes_vrt[!grepl("point_source",ecodes_vrt)]
 ecodes_vrt <- ecodes_vrt[!grepl("building",ecodes_vrt)]
@@ -98,11 +135,31 @@ pixel_training_data_raw <- combined_sample %>% map(function(x) dplyr::select(x, 
                                                     ., by = "sample_id")
 
 # Extract forest type data (coniferous vs. broadleaf)
-forest_type <- rast("data/conif_vs_broadleaf/dk_forest_con_vs_dec.tif")
-pixel_training_data_raw$forest_type <- terra::extract(forest_type, combined_sample_coords)[,2]
+forest_type_cloud <- rast("data/conif_vs_broadleaf/forest_type_cloud.tif")
+forest_type_con <- rast("data/conif_vs_broadleaf/forest_type_con.tif")
+forest_type_dec <- rast("data/conif_vs_broadleaf/forest_type_dec.tif")
+bornholm_forest_type_con <- rast("data/conif_vs_broadleaf/bornholm_forest_type_con.tif")
+bornholm_forest_type_dec <- rast("data/conif_vs_broadleaf/bornholm_forest_type_dec.tif")
+pixel_training_data_raw$forest_type_cloud <- terra::extract(forest_type_cloud, combined_sample_coords)[,2]
+pixel_training_data_raw$forest_type_con <- terra::extract(forest_type_con, combined_sample_coords)[,2]
+pixel_training_data_raw$forest_type_dec <- terra::extract(forest_type_dec, combined_sample_coords)[,2]
+pixel_training_data_raw$forest_type_cloud[is.na(pixel_training_data_raw$forest_type_cloud)] <- 0
+pixel_training_data_raw$forest_type_con[is.na(pixel_training_data_raw$forest_type_con)] <- terra::extract(bornholm_forest_type_con, combined_sample_coords)[is.na(pixel_training_data_raw$forest_type_con),2]
+pixel_training_data_raw$forest_type_dec[is.na(pixel_training_data_raw$forest_type_dec)] <- terra::extract(bornholm_forest_type_dec, combined_sample_coords)[is.na(pixel_training_data_raw$forest_type_dec),2]
+sum(is.na(pixel_training_data_raw$forest_type_cloud))
+sum(is.na(pixel_training_data_raw$forest_type_con))
+sum(is.na(pixel_training_data_raw$forest_type_dec))
+plot(pixel_training_data_raw[is.na(pixel_training_data_raw$forest_type_con),1])
+
+# Add plant available water
+paw_160cm <- rast("data/plant_available_water/paw_160cm.tif")
+pixel_training_data_raw$paw_160cm <- terra::extract(paw_160cm, combined_sample_coords)[,2]
 
 # Export final data
 save(pixel_training_data_raw, file = "data/pixel_sample_combined.Rda")
+# load("data/pixel_sample_combined.Rda")
+
+# Add 
 
 # Quick PCA
 pc <- pixel_training_data_raw %>% 

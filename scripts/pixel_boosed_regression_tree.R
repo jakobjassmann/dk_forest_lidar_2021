@@ -4,17 +4,21 @@
 # Dependencies
 library(caret)
 library(tidyverse)
+library(sf)
 library(doParallel)
+library(gbm)
 
 # Load data
-load("data/pixel_sample_10k.Rda")
+load("data/pixel_sample_combined.Rda")
 
-# Reshape data 
-combined_sample <- combined_sample %>% map(function(x) dplyr::select(x, -forest_class)) %>%
-  reduce(full_join, by = "sample_id") %>% full_join(combined_sample[[1]][,1:2], 
-                                                    ., by = "sample_id")
+# # Reshape data 
+# combined_sample <- combined_sample %>% map(function(x) dplyr::select(x, -forest_class)) %>%
+#   reduce(full_join, by = "sample_id") %>% full_join(combined_sample[[1]][,1:2], 
+#                                                     ., by = "sample_id")
+
 # Filter out masked data and na values   
-combined_sample <- combined_sample %>% 
+combined_sample <- pixel_training_data_raw %>% 
+  st_drop_geometry() %>%
   filter(!is.na(inland_water_mask)) %>%
   filter(!is.na(sea_mask)) %>%
   select(-contains("mask")) %>%
@@ -31,8 +35,8 @@ index_training <- createDataPartition(
   p = 0.8,
   list = F
 )
-train_data <- combined_sample[index_training, -1]
-test_data <- combined_sample[-index_training, -1]
+train_data <- combined_sample[index_training, -which(names(combined_sample) == "sample_id")]
+test_data <- combined_sample[-index_training, -which(names(combined_sample) == "sample_id")]
 
 # Register parallel cluster
 cl <- makePSOCKcluster(32)
@@ -157,9 +161,9 @@ stopCluster(cl)
 gbm_fit
 
 # Check variable importance
-varImp(gbm_fit)
+summary(gbm_fit)
 
 # Validate on test set
 test_preds <- predict(gbm_fit, newdata = test_data)
 confusionMatrix(data = test_preds, test_data$forest_class)
-library(gbm)
+
