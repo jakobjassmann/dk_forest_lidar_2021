@@ -149,11 +149,19 @@ pixel_training_data_raw$forest_type_dec[is.na(pixel_training_data_raw$forest_typ
 sum(is.na(pixel_training_data_raw$forest_type_cloud))
 sum(is.na(pixel_training_data_raw$forest_type_con))
 sum(is.na(pixel_training_data_raw$forest_type_dec))
-plot(pixel_training_data_raw[is.na(pixel_training_data_raw$forest_type_con),1])
 
 # Add plant available water
 paw_160cm <- rast("data/plant_available_water/paw_160cm.tif")
 pixel_training_data_raw$paw_160cm <- terra::extract(paw_160cm, combined_sample_coords)[,2]
+
+
+# Add focal variables
+paw_160cm_focal <- rast("data/focal_variables/a_ptv_focal_3x3.tif")
+pixel_training_data_raw$paw_160cm_focal_3x3 <- terra::extract(paw_160cm_focal, combined_sample_coords)[,2]
+canopy_height_focal <- rast("data/focal_variables/canopy_height_focal_3x3.tif")
+pixel_training_data_raw$canopy_height_focal_3x3 <- terra::extract(canopy_height_focal, combined_sample_coords)[,2]
+normalized_zd_sd_focal <- rast("data/focal_variables/normalized_z_sd_focal_3x3.tif")
+pixel_training_data_raw$normalized_zd_sd_focal_3x3 <- terra::extract(normalized_zd_sd_focal, combined_sample_coords)[,2]
 
 # Export final data
 save(pixel_training_data_raw, file = "data/pixel_sample_combined.Rda")

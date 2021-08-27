@@ -59,39 +59,42 @@ The model uses the EcoDes-DK15 dataset to predict forest quality. Annotations of
 | high | §25 forest polygons |
 | high | private old growth |
 | low | ikke §25 forests polygons |
-| low | NST plantation polygons |
+| low | NST plantation polygons (filtered and evenly sampled by age class) |
 
 The polygons were bagged together in group by forest quality class. We then obtained a simple random sample of 10k pixels across Denmark for each group. 
 
 ``` {r }
-# Load shapefiles
-high_quality <- list.files("../data/response/high_quality_forests/", 
-                           ".shp", 
-                           recursive = T,
-                           full.names = T) %>%
-  map(function(x) {
-    sf_object <- read_sf(x)
-    sf_object <- sf_object %>%
-      dplyr::select(!everything()) %>%
-      mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
-                                "_", 1:n()),
-             forest_class = "high")
-    }) %>%
-  bind_rows() 
-low_quality <- list.files("../data/response/low_quality_forests/", 
-                          "shp$", 
-                          recursive = T,
-                          full.names = T) %>%
-  map(function(x) {
-    sf_object <- read_sf(x)
-    sf_object <- sf_object %>%
-      dplyr::select(!everything()) %>%
-      mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
-                                "_", 1:n()),
-             forest_class = "low")
-  }) %>%
-  bind_rows() 
-combined <- rbind(high_quality, low_quality) %>% st_transform(4326)
+# # Load shapefiles
+# high_quality <- list.files("../data/response_variables/high_quality_forests/", 
+#                            ".shp", 
+#                            recursive = T,
+#                            full.names = T) %>%
+#   map(function(x) {
+#     sf_object <- read_sf(x)
+#     sf_object <- sf_object %>%
+#       dplyr::select(!everything()) %>%
+#       mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
+#                                 "_", 1:n()),
+#              forest_class = "high")
+#     }) %>%
+#   bind_rows() 
+# low_quality <- list.files("../data/response_variables/low_quality_forests/", 
+#                           "shp$", 
+#                           recursive = T,
+#                           full.names = T) %>%
+#   map(function(x) {
+#     sf_object <- read_sf(x)
+#     sf_object <- sf_object %>%
+#       dplyr::select(!everything()) %>%
+#       mutate(forest_id = paste0(gsub(".*/(.*)\\.shp", "\\1", x),
+#                                 "_", 1:n()),
+#              forest_class = "low")
+#   }) %>%
+#   bind_rows() 
+load("../data/high_quality_polys.Rda")
+load("../data/low_quality_polys.Rda")
+combined <- rbind(mutate(high_quality, forest_class = "high"), 
+                  mutate(low_quality, forest_class = "low")) %>% st_transform(4326)
 
 # # Make leaflet
 # m <- leaflet(combined) %>% setView(lng = 10.208681, lat = 56.156397, zoom = 10) %>% 
@@ -127,27 +130,27 @@ summary(gbm_fit, plotit  = F)
 Here is a projection of the model results for the Aarhus region:
 
 ``` {r warning = FALSE}
-# Load training polygons
-load("D:/Jakob/dk_forest_lidar_2021/data/poly_training_tidy.Rda")
-
-# Remove NAs and mask data
-poly_training_data <- na.omit(poly_training_data) %>%
-  dplyr::select(-contains("mask"))
+# # Load training polygons
+# load("D:/Jakob/dk_forest_lidar_2021/data/poly_training_tidy.Rda")
+# 
+# # Remove NAs and mask data
+# poly_training_data <- na.omit(poly_training_data) %>%
+#   dplyr::select(-contains("mask"))
 
 
 # Set area of interest (Aarhus region)
-aoi <- st_polygon(list(matrix(c(10.284891, 56.040591, 
+aoi <- st_polygon(list(matrix(c(10.284891, 56.040591,
                                 10.284891,56.306278,
                                 9.876908,56.306278,
                                 9.876908,56.040591,
-                                10.284891, 56.040591), 
+                                10.284891, 56.040591),
                               ncol = 2,
                               byrow = T))) %>%
-  st_sfc(crs = 4326) %>% 
-  st_transform(st_crs(poly_training_data))
+  st_sfc(crs = 4326) %>%
+  st_transform(st_crs(combined))
 
 # Subset training data
-poly_training_data_sub <- poly_training_data[st_intersects(aoi, poly_training_data)[[1]],] %>%
+poly_training_data_sub <- combined[st_intersects(aoi, combined)[[1]],] %>%
   st_transform(4326) 
 
 # Convert to factor
