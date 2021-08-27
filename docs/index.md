@@ -1,8 +1,11 @@
 # Outputs from the DK Forest LiDAR Project
 Classifciations of Denmark's forest quality using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar).
 
-# First full classification models for the Aarhus Region
-1. [By pixel projections.](by_pixel_projections.html)
-2. [By polygon projections.](by_poly_projections.html) 
+# Model performance (by pixel projections)
+1. [Overall performance + visual for Aarhus region.](by_pixel_projections.html)
+2. [Performance by a) region and b) forest type.](by_region_analysis.html)
+
+# Old stuff
+[By polygon projections.](by_poly_projections.html) 
 
 [last update: 14 July 2021]
