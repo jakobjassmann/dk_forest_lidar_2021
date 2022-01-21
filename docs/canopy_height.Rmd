@@ -15,7 +15,6 @@ set_token("pk.eyJ1IjoiamFrb2JqYXNzbWFubiIsImEiOiJja3ltd2VkamYwNXJoMnFzMXo1azBlc2
 
 ```{r load_raster_as_sf, include=FALSE}
 canopy_height_rast <- rast("../data/ecodes_subset/canopy_height/canopy_height.vrt")
-canopy_height_vect <- vect(canopy_height_rast)
 canopy_height_vals <- values(canopy_height_rast, dataframe = T)
 canopy_height_crds <- crds(canopy_height_rast, df = T, na.rm = F)
 canopy_height_points <- cbind(canopy_height_vals, canopy_height_crds)
@@ -24,6 +23,7 @@ canopy_height_points_vect <- vect(canopy_height_points, geom = c("x", "y"), crs 
 canopy_height_points_latlong <- cbind(canopy_height_points[,1], geom(canopy_height_points_vect)[, c("x","y")])
 colnames(canopy_height_points_latlong) <- c("canopy_heihgt", "long", "lat")
 canopy_height_points_latlong <- data.frame(canopy_height_points_latlong)
+save(canopy_height_points_latlong, file = "../data/canopy_height_points/canopy_height_latlong_points.rda")
 ```
 
 ```{r }
