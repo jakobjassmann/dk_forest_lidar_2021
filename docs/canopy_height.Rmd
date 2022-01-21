@@ -1,0 +1,55 @@
+---
+title: "canopy_height_mapdeck"
+author: "Jakob J. Assmann"
+date: "20/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(terra)
+library(mapdeck)
+set_token("pk.eyJ1IjoiamFrb2JqYXNzbWFubiIsImEiOiJja3ltd2VkamYwNXJoMnFzMXo1azBlc2F4In0.TRLTR6w2EUkE_GYw7b_aDg")
+```
+
+```{r load_raster_as_sf, include=FALSE}
+canopy_height_rast <- rast("../data/ecodes_subset/canopy_height/canopy_height.vrt")
+canopy_height_vect <- vect(canopy_height_rast)
+canopy_height_vals <- values(canopy_height_rast, dataframe = T)
+canopy_height_crds <- crds(canopy_height_rast, df = T, na.rm = F)
+canopy_height_points <- cbind(canopy_height_vals, canopy_height_crds)
+canopy_height_points_vect <- vect(canopy_height_points, geom = c("x", "y"), crs = crs(canopy_height_rast)) %>%
+  project("epsg:4326")
+canopy_height_points_latlong <- cbind(canopy_height_points[,1], geom(canopy_height_points_vect)[, c("x","y")])
+colnames(canopy_height_points_latlong) <- c("canopy_heihgt", "long", "lat")
+canopy_height_points_latlong <- data.frame(canopy_height_points_latlong)
+```
+
+```{r }
+mapdeck(style = mapdeck_style("dark"), pitch = 45 ) %>%
+add_grid(
+  data = canopy_height_points_latlong
+  , lat = "lat"
+  , lon = "long"
+  , cell_size = 10
+  , elevation_scale = 50
+  , layer_id = "grid_layer"
+)
+df <- read.csv(paste0(
+  'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/'
+  , '3d-heatmap/heatmap-data.csv'
+))
+
+df <- df[!is.na(df$lng), ]
+
+mapdeck( style = mapdeck_style("dark"), pitch = 45) %>%
+  add_hexagon(
+    data = df[ df$lat > 54.5, ]
+    , lat = "lat"
+    , lon = "lng"
+    , layer_id = "hex_layer"
+    , elevation_scale = 100
+    , colour_range = colourvalues::colour_values(1:6, palette = colourvalues::get_palette("viridis")[70:256,])
+  )
+```
