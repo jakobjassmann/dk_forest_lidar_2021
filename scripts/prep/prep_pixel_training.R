@@ -243,9 +243,9 @@ pixel_training_data_raw$ns_groundwater_summer <- terra::extract(ns_groundwater_s
 ## Terrons (Peng 2020)
 
 # Load raster 
-terrons <- raster("data/predictor_data/terron_maps/terron_point.tif")
+terrons <- rast("data/predictor_data/terron_maps/terron_point.tif")
 # Extract data
-pixel_training_data_raw$ns_groundwater_winter <- terra::extract(ns_groundwater_winter, combined_sample_coords)[,2]
+pixel_training_data_raw$terrons <- terra::extract(terrons, combined_sample_coords)[,2]
 
 ## Near-surface groundwater (winter)
 
@@ -255,8 +255,8 @@ ns_groundwater_winter <- rast("data/predictor_data/terraennaert_grundvand_10m/Wi
 pixel_training_data_raw$ns_groundwater_winter <- terra::extract(ns_groundwater_winter, combined_sample_coords)[,2]
 
 # Save intermediate backup
-save(pixel_training_data_raw, file = "data/pixel_training.Rda")
-# load("data/pixel_training.Rda")
+save(pixel_training_data_raw, file = "data/training_data/pixel_training.Rda")
+# load("data/training_data/pixel_training.Rda")
 
 ## 5) Add stratification
 
