@@ -18,7 +18,7 @@ aoi <- st_polygon(list(matrix(c(10.284891, 56.040591,
   st_sfc(crs = 4326)
 
 # Read in tile footprints
-tile_footprints <- read_sf("D:/Jakob/dk_nationwide_lidar/data/outputs/tile_footprints/tile_footprints.shp")
+tile_footprints <- read_sf("F:/JakobAssmann/EcoDes-DK_v1.1.0/tile_footprints/tile_footprints.shp")
 
 # Determine intersecting tiles
 aoi_tiles <- aoi %>%
@@ -28,17 +28,23 @@ aoi_tiles <- aoi %>%
 
 # Get dirs for the available variables 
 # (change according to EcoDes-DK15 directory, using a toy directory here)
-ecodes_dir <- "D:/Jakob/dk_nationwide_lidar/data/outputs/" 
-variable_dirs <- list.dirs(ecodes_dir, 
-                           recursive = T, 
-                           full.names = F)
+ecodes_dir <- "F:/JakobAssmann/EcoDes-DK_v1.1.0/" 
+variable_dirs <- shell(paste0("dir /b /s /a:d ", 
+                              gsub("/", "\\\\", ecodes_dir)), intern = T) %>%
+  gsub("\\\\", "/", .)
+
+# Remove folders with subfolders
+variable_dirs <- variable_dirs[variable_dirs %>% 
+                                 map(function(x) sum(grepl(x, variable_dirs)) == 1) %>%
+                                 unlist()]
+variable_dirs <- variable_dirs[!grepl("tile_footprints", variable_dirs)]
 
 # Set list of variables to exclude from subset
 variables_to_exclude <- c("point_source_info.*", "point_count.*", "masks$",
                          "vegetation_proportion$", "tile_footprints")
 
 # Subsets dirs using regex matching
-sub_dirs_to_export <- variable_dirs[-1]
+sub_dirs_to_export <- variable_dirs
 for(i in seq_along(variables_to_exclude)){
   sub_dirs_to_export <- sub_dirs_to_export[!grepl(variables_to_exclude[i], 
                                                   sub_dirs_to_export)]
@@ -49,8 +55,8 @@ target_dir <- "data/ecodes_subset"
 dir.create(target_dir)
 
 # Create absolute folder paths
-in_dirs <- paste0(ecodes_dir, "/", sub_dirs_to_export)
-out_dirs <- paste0(target_dir, "/", sub_dirs_to_export)
+in_dirs <- sub_dirs_to_export
+out_dirs <- paste0(target_dir, "/", gsub(ecodes_dir, "", sub_dirs_to_export))
 
 # Define helper function to copy tiles 
 copy_subset <- function(tiles, in_dir, out_dir){

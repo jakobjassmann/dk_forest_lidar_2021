@@ -9,37 +9,40 @@ library(doParallel)
 library(gbm)
 
 # Load data
-load("data/pixel_sample_combined.Rda")
+load("data/training_data/pixel_training_biowide.Rda")
+load("data/training_data/pixel_valid_biowide.Rda")
 
-# # Reshape data 
-# combined_sample <- combined_sample %>% map(function(x) dplyr::select(x, -forest_class)) %>%
-#   reduce(full_join, by = "sample_id") %>% full_join(combined_sample[[1]][,1:2], 
-#                                                     ., by = "sample_id")
+# Set pseudo random generator seed
+set.seed(24231)
 
-# Filter out masked data and na values   
-combined_sample <- pixel_training_data_raw %>% 
-  st_drop_geometry() %>%
-  filter(!is.na(inland_water_mask)) %>%
-  filter(!is.na(sea_mask)) %>%
-  select(-contains("mask")) %>%
-  mutate(forest_class = factor(forest_class)) %>%
-  na.omit()
-
-# Remove - from variable names
-names(combined_sample) <- gsub("-", ".", names(combined_sample))
-
-# Slit dataset into training and control
-set.seed(32423)
-index_training <- createDataPartition(
-  y = combined_sample$forest_class,
-  p = 0.8,
-  list = F
-)
-train_data <- combined_sample[index_training, -which(names(combined_sample) == "sample_id")]
-test_data <- combined_sample[-index_training, -which(names(combined_sample) == "sample_id")]
+# Rename and subsample for speed
+train_data <- pixel_training_biowide %>% 
+  sample_n(1500) %>%
+  ungroup() %>%
+  dplyr::select(-sample_id, -biowide_region) %>%
+  dplyr::select(-forest_type_cloud,
+                -forest_type_con,
+                -heat_load_index,
+                -aspect,
+                -openness_mean,
+                -normalized_z_mean,
+                -twi,
+                -contains("proportion"))
+test_data <- pixel_valid_biowide %>% 
+  sample_n(450) %>%
+  ungroup() %>%
+  dplyr::select(-sample_id, -biowide_region) %>%
+  dplyr::select(-forest_type_cloud,
+                -forest_type_con,
+                -heat_load_index,
+                -aspect,
+                -openness_mean,
+                -normalized_z_mean,
+                -twi,
+                -contains("proportion"))
 
 # Register parallel cluster
-cl <- makePSOCKcluster(32)
+cl <- makePSOCKcluster(30)
 registerDoParallel(cl)
 
 # Optimise hyperparameters for boosted regression tree
@@ -49,14 +52,15 @@ tuneGrid <- expand.grid(n.trees = seq(200,10000, 300), # Check range
                         n.minobsinnode = 10, # Default value (range 5-15 common)
                         interaction.depth = 3 # Not stumps, range usually between 1-8
                         )
-gbm_fit <- train(forest_class ~ .,
+gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                          repeats = 5, # Increase later
                                          classProbs = TRUE, 
-                                         summaryFunction = twoClassSummary),
+                                         summaryFunction = twoClassSummary,
+                                         verboseIter = TRUE),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 gbm_fit
@@ -67,14 +71,15 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
                         n.minobsinnode = 10, # Default value (range 5-15 common)
                         interaction.depth = 3 # Not stumps, range usually between 1-8
 )
-gbm_fit <- train(forest_class ~ .,
+gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
+                                          summaryFunction = twoClassSummary,
+                                          verboseIter = TRUE),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 gbm_fit # 0.05 seems to be a good learning rate
@@ -85,14 +90,15 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
                         n.minobsinnode = 10, # Default value (range 5-15 common)
                         interaction.depth = 3 # Not stumps, range usually between 1-8
 )
-gbm_fit <- train(forest_class ~ .,
+gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
+                                          summaryFunction = twoClassSummary,
+                                          verboseIter = TRUE),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 gbm_fit # best shrinkage = 0.06
@@ -103,14 +109,15 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
                         n.minobsinnode = c(5,10,15), # Default value (range 5-15 common)
                         interaction.depth = c(2,3,5,8) # Not stumps, range usually between 1-8
 )
-gbm_fit <- train(forest_class ~ .,
+gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
+                                          summaryFunction = twoClassSummary,
+                                          verboseIter = TRUE),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 gbm_fit # => optimal values (15 and 8) at upper extreme let's try some more
@@ -121,14 +128,15 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
                         n.minobsinnode = c(10,15,20), # Default value (range 5-15 common)
                         interaction.depth = c(6,8,10) # Not stumps, range usually between 1-8
 )
-gbm_fit <- train(forest_class ~ .,
+gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
+                                          summaryFunction = twoClassSummary,
+                                          verboseIter = TRUE),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 gbm_fit #15 n.minobsinode is optimal, 
@@ -141,14 +149,15 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
                         n.minobsinnode = 15, # Default value (range 5-15 common)
                         interaction.depth = 10 # Not stumps, range usually between 1-8
 )
-gbm_fit <- train(forest_class ~ .,
+gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 10, 
                                           classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
+                                          summaryFunction = twoClassSummary,
+                                          verboseIter = TRUE),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 # Save final model
@@ -162,8 +171,8 @@ gbm_fit
 
 # Check variable importance
 summary(gbm_fit)
-
+sum(summary(gbm_fit)$rel.inf)
 # Validate on test set
 test_preds <- predict(gbm_fit, newdata = test_data)
-confusionMatrix(data = test_preds, test_data$forest_class)
+confusionMatrix(data = test_preds, test_data$forest_value)
 
