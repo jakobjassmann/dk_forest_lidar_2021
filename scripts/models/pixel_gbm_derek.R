@@ -9,8 +9,8 @@ library(doParallel)
 library(gbm)
 
 # Load data
-load("data/training_data/pixel_training_biowide.Rda")
-load("data/training_data/pixel_valid_biowide.Rda")
+load("data/training_data/pixel_training_derek.Rda")
+load("data/training_data/pixel_valid_derek.Rda")
 
 # Set pseudo random generator seed
 set.seed(24231)
@@ -163,7 +163,7 @@ gbm_fit <- train(forest_value ~ .,
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 # Save final model
-save(gbm_fit, file = "data/final_gbm_model_pixel.Rda")
+save(gbm_fit, file = "data/final_gbm_model_pixel_derek.Rda")
 
 # Stop cluster
 stopCluster(cl)
