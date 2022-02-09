@@ -43,3 +43,4 @@ vignettes/*.pdf
 /data/predictor_data/
 /data/projections/
 /data/models/
+/data/response_data
