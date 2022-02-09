@@ -1,5 +1,6 @@
-# First attempt to train a gradient boosted regression tree to predict the forest class
-# Jakob Assmann j.assmann@bio.au.dk 8 July 2021
+# Train gradient boosted regression tree to predict the forest class
+# Based on Derek's stratification
+# Jakob Assmann j.assmann@bio.au.dk 9 Feb 2022
 
 # Dependencies
 library(caret)

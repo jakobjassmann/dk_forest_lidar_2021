@@ -1,4 +1,5 @@
-# First attempt to train a gradient boosted regression tree to predict the forest class
+# Train gradient boosted regression tree to predict the forest class
+# Based on BIODWIDE stratification
 # Jakob Assmann j.assmann@bio.au.dk 8 July 2021
 
 # Dependencies
