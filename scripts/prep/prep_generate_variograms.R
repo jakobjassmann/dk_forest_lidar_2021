@@ -44,7 +44,8 @@ raster_files <- c(
   "data/predictor_data/terron_maps/terron_point.tif")
 
 # Remove superfluous variables
-raster_files <- c("forest_type_cloud",
+raster_files <- c("mask",
+                  "forest_type_cloud",
                   "forest_type_con",
                   "heat_load_index",
                   "aspect",
@@ -112,7 +113,7 @@ sample_variograms <- function(predictor_raster_file) {
 }
 
 
-# Prep parallel envrionment
+# Prep parallel environment
 cl <- makeCluster(12)
 clusterEvalQ(cl, {
   library(gstat)
@@ -123,8 +124,8 @@ clusterEvalQ(cl, {
 
 # Sample variograms
 vario_list <- pblapply(raster_files, sample_variograms, cl = cl)
-save(vario_list, file = "data/variograms/varigram_list.Rda")
-#load("scripts/jakob/vario_list.Rda")
+save(vario_list, file = "data/variograms/variogram_list.Rda")
+#load("data/variograms/variogram_list.Rda")
 stopCluster(cl)
 
 # Assign names
@@ -136,14 +137,18 @@ plot_variogram <- function(vario, raster_name){
     vario[[1]], 
     aes(x = dist, y = gamma)) + 
     geom_point() +
-    labs(subtitle = paste0(raster_name, " 1 km, 10 m bins"),
+    labs(subtitle = paste0(raster_name, 
+                           "\n1 km, 10 m bins\nminimum samples per bin: ",
+                           min(vario[[1]]$np)),
          x = "Distance (m)", y = "Semivariance") +
     theme_cowplot(15)
   vario_plot_10km <- ggplot(
     vario[[2]], 
     aes(x = dist, y = gamma)) + 
     geom_point() +
-    labs(subtitle = paste0(raster_name, " 10 km, 100 m bins"),
+    labs(subtitle = paste0(raster_name, 
+                           "\n10 km, 100 m bins\nminimum samples per bin: ",
+                           min(vario[[2]]$np)),
          x = "Distance (m)", y = "Semivariance") +
     theme_cowplot(15)
   vario_plots <- plot_grid(vario_plot_1km,
