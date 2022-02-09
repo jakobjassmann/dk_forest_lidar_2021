@@ -1,0 +1,87 @@
+---
+title: "DK Forest LiDAR - Data Overview"
+author: "Jakob J. Assmann"
+date: "8/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(raster)
+library(sf)
+library(tidyverse)
+library(terra)
+library(kableExtra)
+```
+
+## Predictor data sources
+List of predictor variables, their data sources and spatial characteristics of
+the data. 
+
+```{r echo=FALSE}
+# Load training data
+load("../data/training_data/pixel_training.Rda")
+var_names <- names(pixel_training_data)[-(1:4)]
+var_names <- var_names[!grepl("geometry", var_names)]
+
+# Start building a list of all predictor rasters
+raster_list <- shell("dir /b /s F:\\JakobAssmann\\EcoDes-DK_v1.1.0\\*.vrt",
+                    intern = T) %>%
+  gsub("\\\\", "/", .)
+
+# Remove all variables not relevant
+raster_list <- raster_list[!grepl("date_stamp",raster_list)]
+raster_list <- raster_list[!grepl("point_count",raster_list)]
+raster_list <- raster_list[!grepl("point_source",raster_list)]
+raster_list <- raster_list[!grepl("building",raster_list)]
+
+raster_list <- c(
+  raster_list,
+  "data/predictor_data/conif_vs_broadleaf/forest_type_cloud.tif",
+  "data/predictor_data/conif_vs_broadleaf/forest_type_con.tif",
+  "data/predictor_data/conif_vs_broadleaf/forest_type_dec.tif",
+  "data/predictor_data/plant_available_water/paw_160cm.tif",
+  "data/predictor_data/focal_variables/a_ptv_focal_3x3.tif",
+  "data/predictor_data/focal_variables/canopy_height_focal_3x3.tif",
+  "data/predictor_data/focal_variables/normalized_z_sd_focal_3x3.tif",
+  "data/predictor_data/terraennaert_grundvand_10m/summer_predict.tif",
+  "data/predictor_data/terron_maps/terron_point.tif")
+ecodes_rast <- rast(raster_list[3])
+ecodes_stats <- data.frame(file = raster_list[c(1:41)],
+                           xres = ecodes_rast@ptr$res[1],
+                                    yres = ecodes_rast@ptr$res[1],
+                                    crs = crs(ecodes_rast, proj = T))
+raster_stats <- lapply(raster_list[-c(1:41)], 
+                       function(x){
+                         x_rast <- rast(paste0("../", x))
+                         data.frame(file = x,
+                                    xres = x_rast@ptr$res[1],
+                                    yres = x_rast@ptr$res[1],
+                                    crs = crs(x_rast, proj = T))
+                         }) %>% 
+  bind_rows() %>%
+  bind_rows(ecodes_stats,
+            .)
+
+# Add variable names to data frame and tidy up 
+raster_stats$var_name <- var_names
+raster_stats <- relocate(raster_stats, var_name, .before = file)
+raster_stats <- relocate(raster_stats, file, .after = crs)
+
+# Add indicator on whether variable is gonna be used in model or not
+raster_stats$use_in_model <- "Yes"
+raster_stats$use_in_model[raster_stats$var_name %in%
+c("forest_type_cloud",
+  "forest_type_con",
+  "heat_load_index",
+  "aspect",
+  "openness_mean",
+  "normalized_z_mean",
+  "twi")] <- "No"
+raster_stats$use_in_model[grepl("proportion", raster_stats$var_name)] <- "No"
+raster_stats$use_in_model[grepl("paw", raster_stats$var_name)] <- "No"
+raster_stats <- arrange(raster_stats, desc(use_in_model))
+
+raster_stats %>% kable() %>% kable_classic(font_size = 10)
+```
