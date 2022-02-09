@@ -18,7 +18,7 @@ set.seed(24231)
 
 # Rename and subsample for speed
 train_data <- pixel_training_biowide %>% 
-  #sample_n(1500) %>%
+  sample_n(1500) %>%
   ungroup() %>%
   dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
   dplyr::select(-forest_type_cloud,
@@ -31,7 +31,7 @@ train_data <- pixel_training_biowide %>%
                 -contains("proportion"),
                 -contains("paw"))
 test_data <- pixel_valid_biowide %>% 
-  #sample_n(450) %>%
+  sample_n(450) %>%
   ungroup() %>%
   dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
   dplyr::select(-forest_type_cloud,
@@ -164,7 +164,7 @@ gbm_fit <- train(forest_value ~ .,
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 # Save final model
-save(gbm_fit, file = "data/final_gbm_model_pixel.Rda")
+save(gbm_fit, file = "data/final_gbm_model_pixel_biowide.Rda")
 
 # Stop cluster
 stopCluster(cl)

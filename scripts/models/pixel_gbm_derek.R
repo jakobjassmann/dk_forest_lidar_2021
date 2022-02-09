@@ -174,7 +174,7 @@ gbm_fit
 
 # Check variable importance
 summary(gbm_fit)
-sum(summary(gbm_fit)$rel.inf)
+
 # Validate on test set
 test_preds <- predict(gbm_fit, newdata = test_data)
 confusionMatrix(data = test_preds, test_data$forest_value)
