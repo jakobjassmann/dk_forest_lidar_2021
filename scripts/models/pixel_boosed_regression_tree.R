@@ -19,7 +19,7 @@ set.seed(24231)
 train_data <- pixel_training_biowide %>% 
   sample_n(1500) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region) %>%
+  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
   dplyr::select(-forest_type_cloud,
                 -forest_type_con,
                 -heat_load_index,
@@ -27,11 +27,12 @@ train_data <- pixel_training_biowide %>%
                 -openness_mean,
                 -normalized_z_mean,
                 -twi,
-                -contains("proportion"))
+                -contains("proportion"),
+                -contains("paw"))
 test_data <- pixel_valid_biowide %>% 
   sample_n(450) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region) %>%
+  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
   dplyr::select(-forest_type_cloud,
                 -forest_type_con,
                 -heat_load_index,
@@ -39,7 +40,8 @@ test_data <- pixel_valid_biowide %>%
                 -openness_mean,
                 -normalized_z_mean,
                 -twi,
-                -contains("proportion"))
+                -contains("proportion"),
+                -contains("paw"))
 
 # Register parallel cluster
 cl <- makePSOCKcluster(30)
