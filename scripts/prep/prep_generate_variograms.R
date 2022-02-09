@@ -65,6 +65,14 @@ sample_variograms <- function(predictor_raster_file) {
   # Load raster
   predictor_raster <- raster(predictor_raster_file)
   
+  # Check whether raster is part of the EcoDes-DK dataset
+  # If so apply conversion factor
+  if(grepl("EcoDes", predictor_raster_file)){
+    conversion_factors <- read.csv("F:/JakobAssmann/EcoDes-DK_v1.1.0/conversion_factors.csv")
+    conversion_factor <- conversion_factors$conv_fac[sapply(conversion_factors[,1], grepl, x = predictor_raster_file)]
+    predictor_raster <- predictor_raster / conversion_factor
+  }
+  
   # Convert raster to spdf
   predictor_spdf <- as(predictor_raster, "SpatialPixelsDataFrame" ) 
   
