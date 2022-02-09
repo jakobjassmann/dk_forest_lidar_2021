@@ -8,16 +8,16 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(terra)
+library(sf)
 library(mapdeck)
 set_token("pk.eyJ1IjoiamFrb2JqYXNzbWFubiIsImEiOiJja3ltd2VkamYwNXJoMnFzMXo1azBlc2F4In0.TRLTR6w2EUkE_GYw7b_aDg")
 ```
 
 ```{r load_raster_as_sf, include=FALSE}
-canopy_height_poly <- read_stars("../data/ecodes_subset/canopy_height/canopy_height.vrt") %>%
-  st_as_sf() %>%
-  st_transform(crs = 4326)
-save(canopy_height_poly, file = "../data/canopy_height_points/canopy_height_poly.Rda")
+# canopy_height_poly <- read_stars("../data/ecodes_subset/canopy_height/canopy_height.vrt") %>%
+#   st_as_sf() %>%
+#   st_transform(crs = 4326)
+# save(canopy_height_poly, file = "../data/canopy_height_points/canopy_height_poly.Rda")
 # canopy_height_rast <- rast("../data/ecodes_subset/canopy_height/canopy_height.vrt")
 # canopy_height_vals <- values(canopy_height_rast, dataframe = T)
 # canopy_height_crds <- crds(canopy_height_rast, df = T, na.rm = F)
@@ -29,14 +29,15 @@ save(canopy_height_poly, file = "../data/canopy_height_points/canopy_height_poly
 # canopy_height_points_latlong <- data.frame(canopy_height_points_latlong)
 # save(canopy_height_points_latlong, file = "../data/canopy_height_points/canopy_height_latlong_points.rda")
 load("../data/canopy_height_points/canopy_height_poly.Rda")
+canopy_height_poly <- mutate(canopy_height_poly, canopy_height.vrt = canopy_height.vrt / 100)
 ```
 
 ```{r mapdeck_object}
 mapdeck(style = mapdeck_style("dark"), pitch = 45 ) %>%
  add_polygon(
-  data = canopy_height_poly, 
+  data = canopy_height_poly[1:3500000,], 
   layer_id = "grid_layer",
-  elevation = "canopy_height",
-  fill_colour = "canopy_height"
+  elevation = "canopy_height.vrt",
+  fill_colour = "canopy_height.vrt"
 )
 ```

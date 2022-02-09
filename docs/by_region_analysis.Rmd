@@ -17,87 +17,44 @@ library(ggplot2)
 ## Performance by region
 
 ```{r prep, echo = FALSE, results='hide'}
-# Load training data
-load("D:/Jakob/dk_forest_lidar_2021/data/pixel_sample_combined.Rda")
+# Load vaidation data
+load("../data/training_data/pixel_valid_biowide.Rda")
 
-# Load regional polygons
-dk_regions <- read_sf("../data/dk_boundaries/Regions2007.shp")
-dk_regions$region <- c("North Denmark Region",
-                       "Central Denmark Region",
-                       "Region of Southern Denmark",
-                       "Capital Region of Denmark",
-                       "Region Zealand") # Names from (NUTS-2): https://www.regioner.dk/services/in-english
+# Load model
+load("../data/final_gbm_model_pixel.Rda")
 
-# Find a pixels region
-# (This could probably be coded more efficiently, but all other tries vectorising, 
-# on this system - so an old fashioned lapply it is)
-pixel_training_data_raw$region <- NA
-pixel_regions <- st_intersects(pixel_training_data_raw, dk_regions)
-pixel_regions_filtered <- lapply(seq_along(pixel_training_data_raw$sample_id),
-                              function(i){
-                                if(length(pixel_regions[[i]]) == 0){
-                                  region <- NA
-                                } else {
-                                  region <- dk_regions$region[pixel_regions[[i]]]
-                                }
-                                cat(".", "")
-                                return(region)
-                              }) %>% 
-  unlist()
-pixel_training_data_raw$region <- pixel_regions_filtered
-
-# Filter out masked data and na values   
-combined_sample <- pixel_training_data_raw %>% 
-  st_drop_geometry() %>%
-  filter(!is.na(inland_water_mask)) %>%
-  filter(!is.na(sea_mask)) %>%
-  dplyr::select(-contains("mask")) %>%
-  na.omit() %>%
-  mutate(forest_class = as.factor(forest_class))
-
-# Remove - from variable names
-names(combined_sample) <- gsub("-", ".", names(combined_sample))
-
-# Slit dataset into training and control
-set.seed(32423)
-index_training <- createDataPartition(
-  y = combined_sample$forest_class,
-  p = 0.8,
-  list = F
-)
-train_data <- combined_sample[index_training,]
-test_data <- combined_sample[-index_training,]
-
-# Load model 
-load("D:/Jakob/dk_forest_lidar_2021/data/final_gbm_model_pixel.Rda")
+# Load regions
+biowide_regions <- read_sf("../data/stratification/biowide_georegions/biowide_zones.shp")
 ```
 
 # Map of regions
 
 ``` {r map_of_regions, echo = FALSE}
-ggplot() + geom_sf(aes(fill = region), data = dk_regions)
+ggplot() + geom_sf(aes(fill = region), data = biowide_regions)
 ```
 
 ## Performance by region
 
 ```{r perf_by_region, echo=FALSE}
-test_data %>% split(test_data$region) %>%
+pixel_valid_biowide %>% group_split() %>%
   map(function(test_data_region){
     test_preds_region <- predict(gbm_fit, newdata = test_data_region)
-    confusionMatrix(data = test_preds_region, test_data_region$forest_class)
+    cat(unique(test_data_region$biowide_region), "\n")
+    print(confusionMatrix(data = test_preds_region, test_data_region$forest_value))
+    return(NULL)
   })
 ```
 
 # Performance by forest type
 
 ```{r perf_by_forest_type, echo=FALSE}
-test_data %>% 
+pixel_valid_biowide %>% 
   mutate(forest_type = forest_type_cloud + 2 * forest_type_con + 3 * forest_type_dec) %>%
   mutate(forest_type = ordered(forest_type, levels = c(1,2,3))) %>% 
   split(.$forest_type) %>%
   setNames(., c("Cloudy", "Coniferous", "Broadleaf")) %>%
   map(function(test_data_region){
     test_preds_region <- predict(gbm_fit, newdata = test_data_region)
-    confusionMatrix(data = test_preds_region, test_data_region$forest_class)
+    confusionMatrix(data = test_preds_region, test_data_region$forest_value)
   })
 ```
