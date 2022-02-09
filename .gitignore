@@ -37,3 +37,9 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Data
+/data/canopy_height_points/
+/data/predictor_data/
+/data/projections/
+/data/models/
