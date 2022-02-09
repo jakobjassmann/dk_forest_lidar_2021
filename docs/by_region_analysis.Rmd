@@ -12,37 +12,136 @@ library(sf)
 library(caret)
 library(tidyverse)
 library(ggplot2)
+library(ggtext)
 ```
 
-## Performance by region
-
 ```{r prep, echo = FALSE, results='hide'}
-# Load vaidation data
+# Load validation data
 load("../data/training_data/pixel_valid_biowide.Rda")
 
 # Load model
-load("../data/final_gbm_model_pixel.Rda")
+load("../data/final_gbm_model_pixel_biowide.Rda")
 
 # Load regions
 biowide_regions <- read_sf("../data/stratification/biowide_georegions/biowide_zones.shp")
 ```
 
-# Map of regions
-
 ``` {r map_of_regions, echo = FALSE}
-ggplot() + geom_sf(aes(fill = region), data = biowide_regions)
+plot_biowide_region_performance <- function(performance_list){
+  
+  # Extract statistics from performance_list
+  biowide_regions$accuracy <- sapply(performance_list, 
+                                     function(x) round(x$overall["Accuracy"],2))
+  biowide_regions$sens <- sapply(
+    performance_list, 
+    function(x) round(x$table[1,1] / (x$table[1,1] + x$table[2,1]), 2))
+  biowide_regions$spec <- sapply(
+    performance_list, 
+    function(x) round(x$table[2,2] / (x$table[2,2] + x$table[1,2]), 2))
+  
+  biowide_regions <- mutate(
+    biowide_regions,
+    x_cen = st_coordinates(st_centroid(biowide_regions))[,1],
+    y_cen = st_coordinates(st_centroid(biowide_regions))[,2],
+    map_span_x = st_bbox(biowide_regions)["xmax"]- 
+      st_bbox(biowide_regions)["xmin"],
+    map_span_y = st_bbox(biowide_regions)["ymax"]- 
+      st_bbox(biowide_regions)["ymin"]) 
+  
+  biowide_regions <- 
+    mutate(biowide_regions,
+           x = x_cen + map_span_x * c(-0.10,  # Nordjlland
+                                      -0.15,  # Vestjylland
+                                      0.30,  # Oestjylland
+                                      0.25,  # Sjaelland
+                                      -0.00,  # Bornholm
+                                      -0.20), # Fune_Lolland
+           
+           y = y_cen + map_span_y * c( 0.10,  # Nordjlland
+                                       0.10,  # Vestjylland
+                                       0.20,  # Oestjylland
+                                       0.00,  # Sjaelland
+                                       -0.10,  # Bornholm
+                                       -0.20), # Fune_Lolland
+           hjust = c(1, # Nordjlland
+                     1, # Vestjylland
+                     0, # Oestjylland
+                     0, # Sjaelland
+                     0, # Bornholm
+                     0),# Fune_Lolland
+           vjust = c(0, # Nordjlland
+                     1, # Vestjylland
+                     0, # Oestjylland
+                     0, # Sjaelland
+                     1, # Bornholm
+                     1) # Fune_Lolland
+    )
+  
+  biowide_regions <- mutate(
+    biowide_regions,
+    label = paste0("<span style='font-size:16pt'>",
+                   "**", region, "**",
+                   "</span>",
+                   "<span style='font-size:10pt; color:black'>",
+                   "<br>Accuracy: ", accuracy,
+                   "<br>Sensitivity: ", sens,
+                   "<br>Specifcity: ", spec,
+                   "</span>"))
+  ggplot() + 
+    geom_sf(aes(fill = region), data = biowide_regions) +
+    geom_richtext(aes(x = x, 
+                      y = y, 
+                      label = label,
+                      colour = region,
+                      hjust = hjust,
+                      vjust = vjust), 
+                  data = biowide_regions,
+                  fill = NA,
+                  label.color = NA) +
+    coord_sf(clip = "off",
+             crs = st_crs(biowide_regions),
+             xlim = st_bbox(biowide_regions)[c(1,3)] * c(0.7, 1.15),
+             ylim = st_bbox(biowide_regions)[c(2,4)] * c(0.9875, 1.0125)) +
+    theme_void() +
+    theme(legend.position = "none",,
+          plot.margin = margin(0,0,0,0, unit = "in"))
+}
+
+```
+  
+```{r perf_by_region, echo=FALSE}
+performance_biowide_biowide <- pixel_valid_biowide %>% 
+  ungroup() %>%
+  split(., .$biowide_region) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_fit, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+performance_biowide_derek <- pixel_valid_biowide %>% 
+  ungroup() %>%
+  split(., .$dereks_stratification) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_fit, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
 ```
 
-## Performance by region
+## BIOWIDE stratification
+###Performance in BIOWIDE regions:
 
-```{r perf_by_region, echo=FALSE}
-pixel_valid_biowide %>% group_split() %>%
-  map(function(test_data_region){
-    test_preds_region <- predict(gbm_fit, newdata = test_data_region)
-    cat(unique(test_data_region$biowide_region), "\n")
-    print(confusionMatrix(data = test_preds_region, test_data_region$forest_value))
-    return(NULL)
-  })
+```{r biowide_biowide_performance_map, echo = FALSE}
+suppressWarnings(plot_biowide_region_performance(performance_biowide_biowide))
+```
+
+Performance in Derek's regions:
+```{r biowide_derek_performance_map, echoe = FALSE}
+
 ```
 
 # Performance by forest type
