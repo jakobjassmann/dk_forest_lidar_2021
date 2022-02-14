@@ -32,7 +32,7 @@ raster_files <- raster_files[!grepl("building",raster_files)]
 
 # Add non-EcoDes variables
 raster_files <- c(
-  raster_list,
+  raster_files,
   "data/predictor_data/conif_vs_broadleaf/forest_type_cloud.tif",
   "data/predictor_data/conif_vs_broadleaf/forest_type_con.tif",
   "data/predictor_data/conif_vs_broadleaf/forest_type_dec.tif",
@@ -114,7 +114,7 @@ sample_variograms <- function(predictor_raster_file) {
 
 
 # Prep parallel environment
-cl <- makeCluster(12)
+cl <- makeCluster(15)
 clusterEvalQ(cl, {
   library(gstat)
   library(raster)
@@ -159,92 +159,8 @@ plot_variogram <- function(vario, raster_name){
             ncol = 2)
   return("OK")
 }
+
+# Plot variograms
 mapply(plot_variogram, vario_list, names(vario_list))
 
-## Variogram for TRI
-# This is needed seperately as the grain size for
-# the raster is different to the others
-
-# Load TRI raster
-predictor_raster <-  raster_list[[8]]
-
-# Sample raster
-predictor_spdf <- sampleRandom(predictor_raster,
-                               1400000,
-                               sp = T)
-
-
-# Sample the variogram (this can take ages)
-vario <- variogram(tri ~  1, 
-                   predictor_spdf,
-                   width = 90,
-                   verbose = T) 
-
-# Change id colum
-vario$id <- names(predictor_raster)
-
-# Add row to lookup table
-lookup_table <- bind_rows(lookup_table,
-                          data.frame(raster_names = "tri", 
-                                     pretty_names = "Terrain Ruggedness Index (TRI) *"))
-                          
-# Plot variogram using the variogram plotting function.
-plot_variogram(vario) 
-#plot_variogram(vario_list[[10]]) 
-
-# Save variogram 
-save(vario, file = "data/variograms/tri_vario.Rda")
-#load("scripts/jakob/tri_vario.Rda")
-
-## Variograms for SRI (a non-raster variable)
-nuuk_plots <- read.csv("data/processed/nuuk_env_cover_plots_topo_variables.csv",
-                       stringsAsFactors = F) %>%
-  distinct(plot, lat, long, sri) %>%
-  st_as_sf(coords = c("long", "lat"), crs = 4326) %>%
-  st_transform(crs = crs(projection_temp)) %>%
-  as_Spatial()
-
-sri_vario <- variogram(sri ~ 1, nuuk_plots,
-          width = 90)
-
-sri_vario_plot <- ggplot(
-  sri_vario, 
-  aes(x = dist / 1000, y = gamma)) + 
-  geom_point() +
-  labs(x = "Distance (km)", 
-       y = "Semivariance",
-       title = "Solar Radiation Index *") +
-  scale_x_continuous(limits = c(0,40),
-                     breaks = seq(0,40,5)) +
-  theme_cowplot(15)
-
-save_plot("figures/variograms/sri.png",
-          sri_vario_plot,
-          base_aspect_ratio = 1.3,
-          base_height = 5)
-
-# Get distances between plots
-distances <- read.csv("data/processed/nuuk_env_cover_plots_topo_variables.csv",
-                      stringsAsFactors = F) %>%
-  distinct(plot, lat, long) %>%
-  st_as_sf(coords = c("long", "lat"), crs = 4326) %>%
-  st_transform(crs = crs(projection_temp)) %>%
-  st_distance(.,.) 
-# remove duplicate values
-distances[lower.tri(distances)] <- NA
-# convert to vector
-distances <- distances %>% as.vector %>% na.omit()
-
-# Plot distance histogram
-plot_distance_histogram <- ggplot(mapping = aes(x = distances / 1000)) +
-  geom_histogram(binwidth = 0.5) +
-  labs(x = "Distance between plot pairs (km)",
-       y = "Count") +
-  geom_vline(xintercept = 40) +
-  scale_x_continuous(limits = c(0,100), breaks = seq(0,100,10)) +
-  annotate("text", x = 42, y = 4000, hjust = 0, label = "max. distance in variogram analysis") +
-  theme_cowplot(15)
-save_plot("figures/variograms/plot_pair_dist_hist.png",
-          plot_distance_histogram,
-          base_aspect_ratio = 1.3,
-          base_height = 5)
+# End of file
