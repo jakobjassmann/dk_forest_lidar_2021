@@ -17,7 +17,7 @@ load("data/training_data/pixel_valid_derek.Rda")
 set.seed(24231)
 
 # Rename and subsample for speed
-train_data <- pixel_training_biowide %>% 
+train_data <- pixel_training_derek %>% 
   sample_n(1500) %>%
   ungroup() %>%
   dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
@@ -30,7 +30,7 @@ train_data <- pixel_training_biowide %>%
                 -twi,
                 -contains("proportion"),
                 -contains("paw"))
-test_data <- pixel_valid_biowide %>% 
+test_data <- pixel_valid_derek %>% 
   sample_n(450) %>%
   ungroup() %>%
   dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
@@ -159,8 +159,7 @@ gbm_fit <- train(forest_value ~ .,
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 10, 
                                           classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary,
-                                          verboseIter = TRUE),
+                                          summaryFunction = twoClassSummary),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 # Save final model
