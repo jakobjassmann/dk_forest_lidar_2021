@@ -1,0 +1,351 @@
+---
+title: "DK Forest LiDAR - GBM Model Performance"
+author: "Jakob Assmann"
+date: "23/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(terra)
+library(sf)
+library(caret)
+library(tidyverse)
+library(ggplot2)
+library(ggtext)
+library(rnaturalearth)
+library(rasterVis)
+```
+
+## Training data overview
+
+I generated a training dataset consisting of 200k pixel samples from the EcoDes-
+DK15 grid. 100k samples each come from one of the two forest polygon sets 
+("low" and "high" forest value). I then extracted the predictor data for the 
+pixel centres for those data. 
+
+``` {r training_data_map, echo = FALSE, cached = TRUE}
+# Load pixel sample
+load("../data/training_data/pixel_training.Rda")
+
+# Get Denmark boundaries
+denmark <- ne_countries(scale = "large", 
+                        country = "denmark",
+                        returnclass = "sf") %>%
+  st_transform(st_crs(pixel_training_data))
+
+# Plot training data
+ggplot() +
+  geom_sf(data = denmark, fill = "NA", colour = "black") +
+  geom_sf(data = pixel_training_data, 
+          mapping = aes(colour = forest_value),
+          size = 0.01) +
+  labs(title = "Pixel sample for training") +
+  coord_sf(datum = st_crs(pixel_training_data)) +
+  theme_void()
+```
+
+For the training I then split the data set into a training (80%) and validation 
+partition (20%). This split was done based on two stratification. The BIOWIDE
+stratification and Derek's stratification. The samples were split so that they 
+were distributed evenly in each strata (80/20). 
+
+I then trained GBM models on this (currently minimal hyperparameter tuning) using
+the training dataset. This document evaluates the performance of each
+stratification based on the validation dataset in both stratification.   
+
+``` {r function_defs, echo = FALSE, cache=TRUE}
+
+# Load regions
+biowide_regions <- read_sf("../data/stratification/biowide_georegions/biowide_zones.shp")
+dereks_strat <- rast("../data/stratification/derek_stratification/Results_2clim_5soil.tif") %>% as.polygons() %>% st_as_sf(crs = 25832) %>% mutate(Temp = factor(Temp))
+
+# Function to plot performance in biowide regions
+plot_biowide_regions <- function(performance_overall,
+                                            performance_list){
+  
+  # Extract statistics from performance_list
+  biowide_regions$accuracy <- sapply(performance_list, 
+                                     function(x) round(x$overall["Accuracy"],2))
+  biowide_regions$sens <- sapply(
+    performance_list, 
+    function(x) round(x$table[1,1] / (x$table[1,1] + x$table[2,1]), 2))
+  biowide_regions$spec <- sapply(
+    performance_list, 
+    function(x) round(x$table[2,2] / (x$table[2,2] + x$table[1,2]), 2))
+  
+  biowide_regions <- mutate(
+    biowide_regions,
+    x_cen = st_coordinates(st_centroid(biowide_regions))[,1],
+    y_cen = st_coordinates(st_centroid(biowide_regions))[,2],
+    map_span_x = st_bbox(biowide_regions)["xmax"]- 
+      st_bbox(biowide_regions)["xmin"],
+    map_span_y = st_bbox(biowide_regions)["ymax"]- 
+      st_bbox(biowide_regions)["ymin"]) 
+  
+  biowide_regions <- 
+    mutate(biowide_regions,
+           x = x_cen + map_span_x * c(-0.10,  # Nordjlland
+                                      -0.15,  # Vestjylland
+                                      0.30,  # Oestjylland
+                                      0.25,  # Sjaelland
+                                      -0.00,  # Bornholm
+                                      -0.20), # Fune_Lolland
+           
+           y = y_cen + map_span_y * c( 0.10,  # Nordjlland
+                                       0.10,  # Vestjylland
+                                       0.30,  # Oestjylland
+                                       0.00,  # Sjaelland
+                                       -0.10,  # Bornholm
+                                       -0.20), # Fune_Lolland
+           hjust = c(1, # Nordjlland
+                     1, # Vestjylland
+                     0, # Oestjylland
+                     0, # Sjaelland
+                     0, # Bornholm
+                     0),# Fune_Lolland
+           vjust = c(0, # Nordjlland
+                     1, # Vestjylland
+                     0, # Oestjylland
+                     0, # Sjaelland
+                     1, # Bornholm
+                     1) # Fune_Lolland
+    )
+  
+  biowide_regions <- mutate(
+    biowide_regions,
+    label = paste0("<span style='font-size:16pt'>",
+                   "**", region, "**",
+                   "</span>",
+                   "<span style='font-size:10pt; color:black'>",
+                   "<br>Accuracy: ", accuracy,
+                   "<br>Sensitivity: ", sens,
+                   "<br>Specifcity: ", spec,
+                   "</span>"))
+  ggplot() + 
+    geom_sf(aes(fill = region), data = biowide_regions) +
+    geom_richtext(aes(x = x, 
+                      y = y, 
+                      label = label,
+                      colour = region,
+                      hjust = hjust,
+                      vjust = vjust), 
+                  data = biowide_regions,
+                  fill = NA,
+                  label.color = NA) +
+    coord_sf(clip = "off",
+             crs = st_crs(biowide_regions),
+             xlim = st_bbox(biowide_regions)[c(1,3)] * c(0.7, 1.15),
+             ylim = st_bbox(biowide_regions)[c(2,4)] * c(0.975, 1.0125)) +
+    labs(title = "Overall Performance",
+      subtitle = paste0(
+      "Accuracy: ", round(performance_overall$overall["Accuracy"],2), 
+      "\nSensitivity: ", round(performance_overall$table[1,1] / 
+                                 (performance_overall$table[1,1] + 
+                                    performance_overall$table[2,1]), 2),
+      "\nSpecificity: ", round(performance_overall$table[2,2] / 
+                               (performance_overall$table[2,2] + 
+                                  performance_overall$table[1,2]), 2))) +
+    theme_void() +
+    theme(legend.position = "none",,
+          plot.margin = margin(0,0,0,0, unit = "in"))
+}
+
+# Function to plot performance in Derek's regions
+plot_derek_regions <- function(performance_overall,
+                                 performance_list){
+  dereks_regions <- data.frame(region = paste0("Region ", c(1,2,3)))
+  # Extract statistics from performance_list
+  dereks_regions$accuracy <- sapply(performance_list, 
+                                     function(x) round(x$overall["Accuracy"],2))
+  dereks_regions$sens <- sapply(
+    performance_list, 
+    function(x) round(x$table[1,1] / (x$table[1,1] + x$table[2,1]), 2))
+  dereks_regions$spec <- sapply(
+    performance_list, 
+    function(x) round(x$table[2,2] / (x$table[2,2] + x$table[1,2]), 2))
+  
+  dereks_regions <- 
+    mutate(dereks_regions,
+           x = c(567108.7, 567108.7, 567108.7) + sum(-309034, 1027089) * 
+             c(0.3, -0.1, -0.2), 
+           y = c(6201086, 6201086, 6201086) + sum(-5974061, 6482333) *
+             c(0.25, 0.3, 0.1),
+           hjust = c(0,1,1),
+           vjust = c(1,0,1)
+    )
+  
+  dereks_regions <- mutate(
+    dereks_regions,
+    label = paste0("<span style='font-size:16pt'>",
+                   "**", region, "**",
+                   "</span>",
+                   "<span style='font-size:10pt; color:black'>",
+                   "<br>Accuracy: ", accuracy,
+                   "<br>Sensitivity: ", sens,
+                   "<br>Specifcity: ", spec,
+                   "</span>"))
+  ggplot() + 
+    geom_sf(data = dereks_strat, mapping = aes(fill = Temp), colour = NA) +
+    geom_richtext(aes(x = x, 
+                      y = y, 
+                      label = label,
+                      colour = region,
+                      hjust = hjust,
+                      vjust = vjust), 
+                  data = dereks_regions,
+                  fill = NA,
+                  label.color = NA) +
+    coord_sf(clip = "off",
+             crs = st_crs(25832),
+             xlim = c(309034, 1027089),
+             ylim = c(5898440 , 6482333)) +
+    labs(title = "Overall Performance",
+      subtitle = paste0(
+      "Accuracy: ", round(performance_overall$overall["Accuracy"],2), 
+      "\nSensitivity: ", round(performance_overall$table[1,1] / 
+                                 (performance_overall$table[1,1] + 
+                                    performance_overall$table[2,1]), 2),
+      "\nSpecificity: ", round(performance_overall$table[2,2] / 
+                               (performance_overall$table[2,2] + 
+                                  performance_overall$table[1,2]), 2))) +
+    theme_void() +
+    theme(legend.position = "none",,
+          plot.margin = margin(0,0,0,0, unit = "in"))
+}
+```
+
+## Models trained using BIOWIDE stratification
+
+For these models the training data was split according to the BIOWIDE 
+stratification.
+
+```{r data_prep_biowide, echo = FALSE, results='hide'}
+# Load validation data
+load("../data/training_data/pixel_valid_biowide.Rda")
+
+# Load model
+load("../data/final_gbm_model_pixel_biowide.Rda")
+gbm_biowide <- gbm_fit
+rm(gbm_fit)
+
+performance_biowide_overall <- predict(gbm_biowide, 
+                                       newdata = pixel_valid_biowide) %>%
+  confusionMatrix(data = ., 
+                  pixel_valid_biowide$forest_value)
+performance_biowide_biowide <- pixel_valid_biowide %>% 
+  ungroup() %>%
+  split(., .$biowide_region) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+performance_biowide_derek <- pixel_valid_biowide %>% 
+  ungroup() %>%
+  split(., .$dereks_stratification) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+```
+
+### Variable importance
+
+``` {r biowide_variable_importnace, echo = FALSE}
+summary(gbm_biowide)
+```
+
+### Performance in BIOWIDE regions:
+
+```{r biowide_biowide_performance_map, echo = FALSE}
+suppressWarnings(
+  plot_biowide_regions(performance_biowide_overall,
+                                  performance_biowide_biowide))
+```
+
+### Perfromance in Derek's regions:
+
+``` {r biowide_derek_performance_map, echo = FALSE}
+suppressWarnings(
+  plot_derek_regions(performance_biowide_overall,
+                     performance_biowide_derek))
+```
+
+## Models trained using Derek's stratification
+
+``` {r data_prep_derek, echo = FALSE, results='hide'}
+# Load validation data
+load("../data/training_data/pixel_valid_derek.Rda")
+
+# Load model
+load("../data/final_gbm_model_pixel_derek.Rda")
+gbm_derek <- gbm_fit
+rm(gbm_fit)
+
+performance_derek_overall <- predict(gbm_derek, 
+                                       newdata = pixel_valid_derek) %>%
+  confusionMatrix(data = ., 
+                  pixel_valid_derek$forest_value)
+performance_derek_biowide <- pixel_valid_derek %>% 
+  ungroup() %>%
+  split(., .$biowide_region) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_derek, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+performance_derek_derek <- pixel_valid_derek %>% 
+  ungroup() %>%
+  split(., .$dereks_stratification) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_derek, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+```
+
+### Variable importance
+
+```{r derek_variable_importance}
+summary(gbm_derek)
+```
+
+### Performance in BIOWIDE regions:
+
+```{r derek_biowide_performance_map, echo = FALSE}
+suppressWarnings(
+  plot_biowide_regions(performance_derek_overall,
+                       performance_derek_biowide))
+```
+
+### Perfromance in Derek's regions:
+
+``` {r derek_derek_performance_map, echo = FALSE}
+suppressWarnings(
+  plot_derek_regions(performance_derek_overall,
+                     performance_derek_derek))
+```
+
+# Performance by forest type
+
+```{r perf_by_forest_type, echo=FALSE}
+# pixel_valid_biowide %>% 
+#   mutate(forest_type = forest_type_cloud + 2 * forest_type_con + 3 * forest_type_dec) %>%
+#   mutate(forest_type = ordered(forest_type, levels = c(1,2,3))) %>% 
+#   split(.$forest_type) %>%
+#   setNames(., c("Cloudy", "Coniferous", "Broadleaf")) %>%
+#   map(function(test_data_region){
+#     test_preds_region <- predict(gbm_fit, newdata = test_data_region)
+#     confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+# })
+```
