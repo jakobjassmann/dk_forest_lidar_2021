@@ -106,9 +106,9 @@ combined_sample_coords <- rbind(high_quality_sample_coords,
 save(combined_sample_coords, file = "data/training_data/pixel_geometries/combined_pixel_sample.Rda")
 # load("data/training_data/pixel_geometries/combined_pixel_sample.Rda")
 
-# Write as shp (required for parallel processing with terra later)
-write_sf(combined_sample_coords, 
-         dsn = "data/training_data/pixel_geometries/combined_pixel_sample.shp")
+# Write as shp (not required for parallel processing with terra anymore)
+# write_sf(combined_sample_coords, 
+#          dsn = "data/training_data/pixel_geometries/combined_pixel_sample.shp")
 
 # Convert to vect (terra) for fast extraction
 combined_sample_coords <- combined_sample_coords %>%
@@ -167,7 +167,7 @@ combined_sample <- pblapply(ecodes_vrt,
                          cl = cl) 
 
 save(combined_sample, file = "data/training_data/ecodes_pixel_sample_temp.Rda")
-# load("data/ecodes_pixel_sample_temp.Rda")
+# load("data/training_data/ecodes_pixel_sample_temp.Rda")
 
 # Stop cluster
 stopCluster(cl)
@@ -189,7 +189,7 @@ head(combined_sample_coords$sample_id == pixel_training_data_raw$sample_id)
 tail(combined_sample_coords$sample_id == pixel_training_data_raw$sample_id)
 which(!(combined_sample_coords$sample_id == pixel_training_data_raw$sample_id))
 
-## Forest type (coniferous vs. broadleaf)
+## Alex and Jakob's forest type (coniferous vs. broadleaf)
 
 # Load rasters
 forest_type_cloud <- rast("data/predictor_data/conif_vs_broadleaf/forest_type_cloud.tif")
@@ -220,6 +220,16 @@ paw_160cm <- rast("data/predictor_data/plant_available_water/paw_160cm.tif")
 # Extract paw
 pixel_training_data_raw$paw_160cm <- terra::extract(paw_160cm, combined_sample_coords)[,2]
 
+# Bjerreskov et al. 2021 Forest type (coniferous / decidious)
+
+# Load rasters
+treetype_bjer_dec <- rast("data/predictor_data/treetype/treetype_bjer_dec.tif")
+treetype_bjer_con <- rast("data/predictor_data/treetype/treetype_bjer_con.tif")
+
+# Extract treetype
+pixel_training_data_raw$treetype_bjer_dec <- terra::extract(treetype_bjer_dec, combined_sample_coords)[,2]
+pixel_training_data_raw$treetype_bjer_con <- terra::extract(treetype_bjer_con, combined_sample_coords)[,2]
+
 ## Aggregated variables
 
 # Load rasters
@@ -232,11 +242,11 @@ pixel_training_data_raw$paw_160cm_focal_3x3 <- terra::extract(paw_160cm_focal, c
 pixel_training_data_raw$canopy_height_focal_3x3 <- terra::extract(canopy_height_focal, combined_sample_coords)[,2]
 pixel_training_data_raw$normalized_zd_sd_focal_3x3 <- terra::extract(normalized_zd_sd_focal, combined_sample_coords)[,2]
 
-
 ## Near surface groundwater(summer)
 
 # Load raster
 ns_groundwater_summer <- rast("data/predictor_data/terraennaert_grundvand_10m/summer_predict.tif")
+
 # Extract data
 pixel_training_data_raw$ns_groundwater_summer <- terra::extract(ns_groundwater_summer, combined_sample_coords)[,2]
 
@@ -246,6 +256,18 @@ pixel_training_data_raw$ns_groundwater_summer <- terra::extract(ns_groundwater_s
 terrons <- rast("data/predictor_data/terron_maps/terron_point.tif")
 # Extract data
 pixel_training_data_raw$terrons <- terra::extract(terrons, combined_sample_coords)[,2]
+
+## Soil variables from Derek / sustainscapes 
+
+# Load rasters
+clay <- rast("data/predictor_data/soil_layers/Clay.tif")
+sand <- rast("data/predictor_data/soil_layers/Sand.tif")
+soil_carbon <- rast("data/predictor_data/soil_layers/Soc.tif")
+
+# Extract data
+pixel_training_data_raw$clay <- terra::extract(clay, combined_sample_coords)[,2]
+pixel_training_data_raw$sand <- terra::extract(sand, combined_sample_coords)[,2]
+pixel_training_data_raw$soil_carbon <- terra::extract(soil_carbon, combined_sample_coords)[,2]
 
 # Save intermediate backup
 save(pixel_training_data_raw, file = "data/training_data/pixel_training.Rda")
