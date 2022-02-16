@@ -30,4 +30,13 @@ writeRaster(bornholm == 1, "data/predictor_data/conif_vs_broadleaf/bornholm_fore
 writeRaster(bornholm == 2, "data/predictor_data/conif_vs_broadleaf/bornholm_forest_type_con.tif", overwrite = T)
 writeRaster(bornholm == 3, "data/predictor_data/conif_vs_broadleaf/bornholm_forest_type_dec.tif", overwrite = T)
 
+# Bjerreskov et al. 2021 forest types
+library(terra)
+terraOptions(progress = 1)
+treetype_bjer <- rast("data/predictor_data/treetype/treetype_dk_raw.tif")
+treetype_bjer_con <- treetype_bjer == 1
+writeRaster(treetype_bjer_con, "data/predictor_data/treetype_bjer_con.tif")
+treetype_bjer_dec <- treetype_bjer == 2
+writeRaster(treetype_bjer_dec, "data/predictor_data/treetype_bjer_dec.tif")
 
+# EOF
