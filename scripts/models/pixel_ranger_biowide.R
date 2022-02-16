@@ -57,16 +57,23 @@ tuneGrid <- expand.grid(mtry = c(2:10),
                         min.node.size = c(1, 3, 5)) # Not stumps, range usually between 1-8
 
 rf_fit <- train(forest_value ~ .,
-                 data = train_data,
-                 method = "ranger",
-                 preProc = c("center", "scale"),
-                 trControl = trainControl(method = "repeatedcv", 
-                                          repeats = 5, # Increase later
-                                          classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
-                 tuneGrid = tuneGrid,
-                 metric = "ROC")
+                data = train_data,
+                method = "ranger",
+                preProc = c("center", "scale"),
+                trControl = trainControl(method = "repeatedcv", 
+                                         repeats = 5, # Increase later
+                                         classProbs = TRUE, 
+                                         summaryFunction = twoClassSummary),
+                tuneGrid = tuneGrid,
+                importance = "permutation",
+                metric = "ROC")
+
 rf_fit
 
 # Variable importnace
 summary(rf_fit)
+varImp(rf_fit)
+
+# Save final model
+save(rf_fit, file = "data/final_ranger_model_pixel_biowide.Rda")
+

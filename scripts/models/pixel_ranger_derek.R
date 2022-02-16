@@ -17,7 +17,7 @@ load("data/training_data/pixel_valid_derek.Rda")
 set.seed(24231)
 
 # Rename and subsample for speed
-train_data <- pixel_training_biowide %>% 
+train_data <- pixel_training_derek %>% 
   sample_n(1500) %>%
   #sample_frac(0.5) %>%
   ungroup() %>%
@@ -31,7 +31,7 @@ train_data <- pixel_training_biowide %>%
                 -twi,
                 -contains("proportion"),
                 -contains("paw"))
-test_data <- pixel_valid_biowide %>% 
+test_data <- pixel_valid_derek %>% 
   sample_n(450) %>%
   #sample_frac(0.5) %>%
   ungroup() %>%
@@ -57,16 +57,20 @@ tuneGrid <- expand.grid(mtry = c(2:10),
                         min.node.size = c(1, 3, 5)) # Not stumps, range usually between 1-8
 
 rf_fit <- train(forest_value ~ .,
-                 data = train_data,
-                 method = "ranger",
-                 preProc = c("center", "scale"),
-                 trControl = trainControl(method = "repeatedcv", 
-                                          repeats = 5, # Increase later
-                                          classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
-                 tuneGrid = tuneGrid,
-                 metric = "ROC")
+                data = train_data,
+                method = "ranger",
+                preProc = c("center", "scale"),
+                trControl = trainControl(method = "repeatedcv", 
+                                         repeats = 5, # Increase later
+                                         classProbs = TRUE, 
+                                         summaryFunction = twoClassSummary),
+                tuneGrid = tuneGrid,
+                importance = "permutation",
+                metric = "ROC")
 rf_fit
 
-# Variable importnace
+# Variable importance
 summary(rf_fit)
+varImp(rf_fit)
+
+save(rf_fit, file = "data/final_ranger_model_pixel_derek.Rda")
