@@ -43,5 +43,4 @@ vignettes/*.pdf
 /data/canopy_height_points/
 /data/predictor_data/
 /data/projections/
-/data/models/
 /data/response_data
