@@ -163,7 +163,7 @@ gbm_fit <- train(forest_value ~ .,
                  tuneGrid = tuneGrid,
                  metric = "ROC")
 # Save final model
-save(gbm_fit, file = "data/final_gbm_model_pixel_derek.Rda")
+save(gbm_fit, file = "data/models/final_gbm_model_pixel_derek.Rda")
 
 # Stop cluster
 stopCluster(cl)
