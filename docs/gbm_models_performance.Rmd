@@ -284,7 +284,7 @@ suppressWarnings(
 load("../data/training_data/pixel_valid_derek.Rda")
 
 # Load model
-load("../data/final_gbm_model_pixel_derek.Rda")
+load("../data/models/final_gbm_model_pixel_derek.Rda")
 gbm_derek <- gbm_fit
 rm(gbm_fit)
 
