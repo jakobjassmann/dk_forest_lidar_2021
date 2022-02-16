@@ -16,6 +16,7 @@ pixel_training_data <- pixel_training_data %>%
   filter(!is.na(inland_water_mask)) %>%
   filter(!is.na(sea_mask)) %>%
   select(-contains("mask")) %>%
+  select(-clay, -sand, -soil_carbon) %>%
   mutate(forest_value = factor(forest_value)) %>%
   na.omit()
 
