@@ -35,8 +35,8 @@ library(terra)
 terraOptions(progress = 1)
 treetype_bjer <- rast("data/predictor_data/treetype/treetype_dk_raw.tif")
 treetype_bjer_con <- treetype_bjer == 1
-writeRaster(treetype_bjer_con, "data/predictor_data/treetype_bjer_con.tif")
+writeRaster(treetype_bjer_con, "data/predictor_data/treetype/treetype_bjer_con.tif")
 treetype_bjer_dec <- treetype_bjer == 2
-writeRaster(treetype_bjer_dec, "data/predictor_data/treetype_bjer_dec.tif")
+writeRaster(treetype_bjer_dec, "data/predictor_data/treetype/treetype_bjer_dec.tif")
 
 # EOF
