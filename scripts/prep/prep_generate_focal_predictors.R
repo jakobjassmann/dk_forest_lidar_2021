@@ -23,10 +23,10 @@ focal_params <- data.frame(
                   rep("canopy_height", 4),
                   rep("vegetation_density", 4)),
   window = rep(c(11,25), 8),
-  fun = rep(c("mean", "sd"), 8)
+  fun = rep(c("mean", "mean", "sd", "sd"), 4)
 )
 focal_params$out_file <- paste0("data/predictor_data/focal_variables/",
-                                focal_params$raster_file,
+                                focal_params$raster_name,
                                 "_", focal_params$fun, 
                                 "_", focal_params$window * 10, "m.tif")
 

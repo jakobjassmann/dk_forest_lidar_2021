@@ -230,22 +230,57 @@ treetype_bjer_con <- rast("data/predictor_data/treetype/treetype_bjer_con.tif")
 pixel_training_data_raw$treetype_bjer_dec <- terra::extract(treetype_bjer_dec, combined_sample_coords)[,2]
 pixel_training_data_raw$treetype_bjer_con <- terra::extract(treetype_bjer_con, combined_sample_coords)[,2]
 
-## Aggregated variables
+## Focal variables - Old vars
 
 # Load rasters
-paw_160cm_focal <- rast("data/predictor_data/focal_variables/a_ptv_focal_3x3.tif")
-canopy_height_focal <- rast("data/predictor_data/focal_variables/canopy_height_focal_3x3.tif")
-normalized_zd_sd_focal <- rast("data/predictor_data/focal_variables/normalized_z_sd_focal_3x3.tif")
+paw_160cm_focal <- rast("data/predictor_data/focal_variables/old_vars/a_ptv_focal_3x3.tif")
+canopy_height_focal <- rast("data/predictor_data/focal_variables/old_vars/canopy_height_focal_3x3.tif")
+normalized_zd_sd_focal <- rast("data/predictor_data/focal_variables/old_vars/normalized_z_sd_focal_3x3.tif")
 
 # Extract data
 pixel_training_data_raw$paw_160cm_focal_3x3 <- terra::extract(paw_160cm_focal, combined_sample_coords)[,2]
 pixel_training_data_raw$canopy_height_focal_3x3 <- terra::extract(canopy_height_focal, combined_sample_coords)[,2]
 pixel_training_data_raw$normalized_zd_sd_focal_3x3 <- terra::extract(normalized_zd_sd_focal, combined_sample_coords)[,2]
 
+## Focal variables - new vars
+focal_vars <- list.files("data/predictor_data/focal_variables/", "tif", full.names = T)
+
+# Prepare cluster
+cl <- makeCluster(16)
+clusterEvalQ(cl, library(terra))
+
+# Export coordinates
+combined_sample_coords_wrapped <- wrap(combined_sample_coords)
+clusterExport(cl, varlist = "combined_sample_coords_wrapped")
+clusterEvalQ(cl, {
+  combined_sample_coords <- vect(combined_sample_coords_wrapped)
+  print(head(combined_sample_coords))
+})
+
+# Extract variables in parallel (took around 1h with 30 cores on d23510)
+focal_vars <- pblapply(focal_vars,
+                       function(rast_file){
+                         focal_var <- rast(rast_file)
+                         cell_values <- terra::extract(focal_var, combined_sample_coords)[,2]
+                         extractions <- data.frame(
+                           sample_id = combined_sample_coords$sample_id,
+                           cell_values = cell_values)
+                         names(extractions)[2] <-  gsub(".*/(.*).tif", "\\1", rast_file) 
+                         return(extractions)
+                       },
+                            cl = cl) %>%
+  reduce(full_join, by = "sample_id") 
+
+# Stop cluster
+stopCluster(cl)
+rm(cl)
+  
+pixel_training_data_raw <- full_join(pixel_training_data_raw, focal_vars, by = "sample_id")
+
 ## Near surface groundwater(summer)
 
 # Load raster
-ns_groundwater_summer <- rast("data/predictor_data/terraennaert_grundvand_10m/summer_predict.tif")
+ns_groundwater_summer <- rast("data/predictor_data/terraennaert_grundvand_10m/ns_groundwater_summer_utm32_10m.tif")
 
 # Extract data
 pixel_training_data_raw$ns_groundwater_summer <- terra::extract(ns_groundwater_summer, combined_sample_coords)[,2]
@@ -260,9 +295,9 @@ pixel_training_data_raw$terrons <- terra::extract(terrons, combined_sample_coord
 ## Soil variables from Derek / sustainscapes 
 
 # Load rasters
-clay <- rast("data/predictor_data/soil_layers/Clay.tif")
-sand <- rast("data/predictor_data/soil_layers/Sand.tif")
-soil_carbon <- rast("data/predictor_data/soil_layers/Soc.tif")
+clay <- rast("data/predictor_data/soil_layers/Clay_utm32_10m.tif")
+sand <- rast("data/predictor_data/soil_layers/Sand_utm32_10m.tif")
+soil_carbon <- rast("data/predictor_data/soil_layers/Soc_utm32_10m.tif")
 
 # Extract data
 pixel_training_data_raw$clay <- terra::extract(clay, combined_sample_coords)[,2]
@@ -309,6 +344,7 @@ pixel_training_data <- relocate(pixel_training_data,
                                 biowide_region,
                                 dereks_stratification)
 save(pixel_training_data, file = "data/training_data/pixel_training.Rda")
+# pixel_training_data <- pixel_training_data_raw
 # load("data/training_data/pixel_training.Rda")
 
 ## 6) Quality control and easy random forests ---- 
