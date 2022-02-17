@@ -295,7 +295,7 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_biowide), 
                            c("Overall", names(performance_biowide_biowide)))) %>%
-  kable() %>% kable_classic(font_size = 12)
+  kable() %>% kable_classic(font_size = 12, full_width = F)
 
 ```
 
@@ -308,7 +308,7 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_derek), 
                            c("Overall", paste0("Region ", names(performance_biowide_derek))))) %>%
-  kable() %>% kable_classic(font_size = 12)
+  kable() %>% kable_classic(font_size = 12, full_width = F)
 ```
 
 ## Models trained using Derek's stratification
@@ -363,7 +363,7 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_derek_overall), performance_derek_biowide), 
                            c("Overall", names(performance_derek_biowide)))) %>%
-  kable() %>% kable_classic(font_size = 12)
+  kable() %>% kable_classic(font_size = 12, full_width = F)
 ```
 
 ### Perfromance in Derek's regions:
@@ -375,7 +375,7 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_derek_overall), performance_derek_derek), 
                            c("Overall", paste0("Region ", names(performance_derek_derek))))) %>%
-  kable() %>% kable_classic(font_size = 12)
+  kable() %>% kable_classic(font_size = 12, full_width = F)
 ```
 
 # Performance by forest type
