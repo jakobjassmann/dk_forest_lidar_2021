@@ -72,8 +72,9 @@ rf_fit
 
 # Variable importnace
 summary(rf_fit)
-varImp(rf_fit)
-
+varImp(rf_fit)$importance %>% arrange(desc(Overall))
 # Save final model
 save(rf_fit, file = "data/final_ranger_model_pixel_biowide.Rda")
 
+# Stop Cluster
+stopCluster(cl)
