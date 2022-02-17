@@ -15,6 +15,7 @@ library(ggplot2)
 library(ggtext)
 library(rnaturalearth)
 library(rasterVis)
+library(kableExtra)
 ```
 
 ## Training data overview
@@ -213,6 +214,29 @@ plot_derek_regions <- function(performance_overall,
     theme(legend.position = "none",,
           plot.margin = margin(0,0,0,0, unit = "in"))
 }
+
+# Function to Generate performance table from list of confusion matrices
+performance_table <- function(cf_matrix_list){
+  performance_stats <- lapply(cf_matrix_list, function(x){
+    data.frame(Accuracy = round(x$overall["Accuracy"],2),
+               Error = round(1 - x$overall["Accuracy"],2),
+               Sensitivity = round(x$byClass["Sensitivity"],2),
+               Specificity = round(x$byClass["Specificity"],2),
+               FPR = round(1 - x$byClass["Specificity"],2),
+               UserAccuracy = round(x$byClass["Pos Pred Value"],2))
+  }) %>% bind_rows()
+  performance_stats <- data.frame(t(performance_stats))
+  names(performance_stats) <- names(cf_matrix_list)
+  performance_stats$Measure <- c("Accuracy",
+                                "Error",
+                                "Sensitivity (True Positive Rate)",
+                                "Specificity (True Negative Rate)",
+                                "Fall-out (False Positive Rate)",
+                                "Positive predictive value (User Accuracy)")
+  row.names(performance_stats) <- NULL
+  performance_stats <- relocate(performance_stats, Measure)
+  return(performance_stats)
+}
 ```
 
 ## Models trained using BIOWIDE stratification
@@ -253,6 +277,7 @@ performance_biowide_derek <- pixel_valid_biowide %>%
     #print(confusionMat)
     return(confusionMat)
   }) 
+
 ```
 
 ### Variable importance
@@ -266,7 +291,11 @@ summary(gbm_biowide)
 ```{r biowide_biowide_performance_map, echo = FALSE}
 suppressWarnings(
   plot_biowide_regions(performance_biowide_overall,
-                                  performance_biowide_biowide))
+                       performance_biowide_biowide))
+
+performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_biowide), 
+                           c("Overall", names(performance_biowide_biowide)))) %>%
+  kable() %>% kable_classic(font_size = 12)
 ```
 
 ### Perfromance in Derek's regions:
@@ -275,6 +304,10 @@ suppressWarnings(
 suppressWarnings(
   plot_derek_regions(performance_biowide_overall,
                      performance_biowide_derek))
+
+performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_derek), 
+                  c("Overall", paste0("Region ", names(performance_biowide_derek))))) %>%
+  kable() %>% kable_classic(font_size = 12)
 ```
 
 ## Models trained using Derek's stratification
@@ -326,6 +359,10 @@ summary(gbm_derek)
 suppressWarnings(
   plot_biowide_regions(performance_derek_overall,
                        performance_derek_biowide))
+
+performance_table(setNames(c(list(performance_derek_overall), performance_derek_biowide), 
+                  c("Overall", names(performance_derek_biowide)))) %>%
+  kable() %>% kable_classic(font_size = 12)
 ```
 
 ### Perfromance in Derek's regions:
@@ -334,6 +371,10 @@ suppressWarnings(
 suppressWarnings(
   plot_derek_regions(performance_derek_overall,
                      performance_derek_derek))
+
+performance_table(setNames(c(list(performance_derek_overall), performance_derek_derek), 
+                  c("Overall", paste0("Region ", names(performance_derek_derek))))) %>%
+  kable() %>% kable_classic(font_size = 12)
 ```
 
 # Performance by forest type
