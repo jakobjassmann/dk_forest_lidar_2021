@@ -15,73 +15,157 @@ library(terra)
 library(kableExtra)
 ```
 
-## Predictor data sources
-List of predictor variables, their data sources and spatial characteristics of
-the data. 
+## Feature Selection
 
+### EcoDes-DK15 descriptors
+
+From the 76 available EcoDes-DK15 layers (incl. auxiliary layers), 
+we removed the date_stamp_xxx, point_count_xxx, point_source and 
+building_proportion layers from the onset as we deemed those non-informative. We
+kept the sea and water mask layers for sub-setting of the training data to make 
+sure only land pixels are included, but discarded the mask layers afterwards. 
+
+Furthermore, we removed the following descriptors:
+
+- canopy_openness
+- point_count 
+- normalized_z_mean
+- heat_load_index
+- openness_mean 
+- twi descriptors 
+
+... as the ecological meaning of these was conceptually redundant with other 
+predictor variables (vegetation_density, canopy_height, solar_radiation, 
+openness_difference and ground water respectively) and initial model runs 
+indicated that these variables provide little additional input. We also removed 
+the aspect variable because the aspect at 10 m resolution for the latter reason,
+and as conceptually the aspect at 10 m likely has little meaning on whether a 
+forest cell is of high quality or not (all cardinal directions would 
+theoretically be expected to be of high quality). 
+
+Finally, we removed all vegetation_proportion variables as by themselves they
+had showed little predictive power in the initial model runs. We also capture 
+the vertical lidar point cloud profile with the foliage_height_diversity variable. 
+
+### Soil predictors
+
+#### Type and composition
+
+Soil type and composition are an important indicator in the key for the paragraph
+25 forests. Here we used the following three predictors to account for 
+differences in the soils across Denmark:
+
+- Clay_utm32_10m
+- Sand_utm32_10m
+- Soc_utm32_10m
+
+These data were obtained from Derek. The original rasters were in 250 m 
+resolution and I projected them to the EcoDes-DK grid 10 m UTM32N using a 
+nearest neighbor resampling. This resampling strategy makes no assumption about
+the spatial distribution of the variables within a downsampled 250 m dataset, 
+but might give the wrong impression that we have used higher-resolution 
+predictor data than we actually have.
+
+I currently have no further information on how these data were generated.
+
+#### Water avilability 
+
+To estimate the wetness / water availability of the forest ground to the plants
+we use the summer near-surface ground water estimates from Koch et al. 2021.
+
+- ns_groundwater_summer
+
+### Focal variables
+
+To capture the spacial context around a pixel we selected four key predictor 
+variables and calculated their mean and variation (sd) in a window of 110 m and
+250 m around each pixel. We conducted a colinearity analysis and selected the
+following final four focal variables for the analysis:
+
+- dtm_10m_sd_110m
+- canopy_height_sd_110m
+- vegetation_density_sd_110m
+- ns_groundwater_summer_sd_110m
+
+You can read more about the selection process [here](focal_var_selection.html).
+
+## Final predictor data sources
+
+Her is an overview of the final predictor data sources. 
 ```{r echo=FALSE}
-# Load training data
+# Dependencies
+library(tidyverse)
+library(sf)
+library(kableExtra)
+
+# Load data
 load("../data/training_data/pixel_training.Rda")
-var_names <- names(pixel_training_data)[-(1:4)]
-var_names <- var_names[!grepl("geometry", var_names)]
 
-# Start building a list of all predictor rasters
-raster_list <- shell("dir /b /s F:\\JakobAssmann\\EcoDes-DK_v1.1.0\\*.vrt",
-                    intern = T) %>%
-  gsub("\\\\", "/", .)
+# Filter out masked data and na values   
+predictor_vars <- pixel_training_data %>% 
+  st_drop_geometry() %>%
+  select(-contains("mask")) %>%
+  select(-contains("250")) %>%
+  select(-contains("mean_110")) %>%
+  select(-contains("proportion")) %>%
+  select(-heat_load_index,
+         -aspect,
+         -openness_mean,
+         -normalized_z_mean,
+         -canopy_openness,
+         -treetype_bjer_con,
+         -twi,
+         -forest_value,
+         -sample_id,
+         -biowide_region,
+         -dereks_stratification) %>% 
+  names() %>%
+  sort()
 
-# Remove all variables not relevant
-raster_list <- raster_list[!grepl("date_stamp",raster_list)]
-raster_list <- raster_list[!grepl("point_count",raster_list)]
-raster_list <- raster_list[!grepl("point_source",raster_list)]
-raster_list <- raster_list[!grepl("building",raster_list)]
+# Build dataframe
+tibble(Predictor = predictor_vars,
+           `Source Dataset` = c("EcoDes-DK15",
+                                "EcoDes-DK15",
+                                "EcoDes-DK15",
+                                "EcoDes-DK15",
+                                "SustainScapes / Unknown",
+                                "EcoDes-DK15",
+                                "EcoDes-DK15",
+                                "EcoDes-DK15",
+                                "EcoDes-DK15",
+                                "Koch et al. 2021",
+                                "Koch et al. 2021",
+                                "EcoDes-DK15",
+                                "SustainScapes / Unkown",
+                                "EcoDes-DK15",
+                                "SustainScapes / Unkown",
+                                "Peng et al. 2020",
+                                "EcoDes-DK15",
+                                "Bjerreskov et al. 2021",
+                                "EcoDes-DK15",
+                                "EcoDes-DK15"),
+       `Ecological Meaning` = c("Quality of lidar signal reflected (proxy of biomass).",
+                                "Variation in quality of lidar signal reflected within 10 m pixel (proxy of variation in biomass).",
+                                "Lidar estimator of canopy height (95-percentile of height distribution of all vegetation points in 10 m pixel).",
+                                "Variation in lidar estimator of canopy height within 110 m focal window (11 x 11 pixels).",
+                                "Estimated percentage clay content of soil (250 m resolution downscaled to 10 m).",
+                                "Terrain height above sea level.",
+                                "Variation in terrain height above sea level within 110 m focal window (11 x 11 pixels).",
+                                "Foliage height diversity MacArthur and MacArthur (1979) based on height bins by Wilson (1974)",
+                                "Estimated variation in canopy height within 10 m pixel.",
+                                "Estimate of depth of near-surface groundwater during an average summer.",
+                                "Variation in the estimate of depth of near-surface groundwater during an average summer within a 110 m focal window (11 x 11 pixels).",
+                                "Presence of linear features in the terrain (valleys, ridges etc.).",
+                                "Estimated percentage sand content of soil (250 m resolution downscaled to 10 m).",
+                                "Terrain slope at 10 m",
+                                "Estimated percentage soil organic carbon content of soil (250 m resolution downscaled to 10 m).",
+                                "Annual incident solar radiation based on terrain model (aspect and slope).",
+                                "Soil terron classes.",
+                                "Decidous or coniferous forest.",
+                                "Denisty of vegetation points in 10 m lidar pixel.",
+                                "Variation of density of vegeation points amongst pixels within 110 m window (11 x 11 pixels)."
+                                )) %>%
+  kable() %>%
+  kable_classic(full_width = F)
 
-raster_list <- c(
-  raster_list,
-  "data/predictor_data/conif_vs_broadleaf/forest_type_cloud.tif",
-  "data/predictor_data/conif_vs_broadleaf/forest_type_con.tif",
-  "data/predictor_data/conif_vs_broadleaf/forest_type_dec.tif",
-  "data/predictor_data/plant_available_water/paw_160cm.tif",
-  "data/predictor_data/focal_variables/a_ptv_focal_3x3.tif",
-  "data/predictor_data/focal_variables/canopy_height_focal_3x3.tif",
-  "data/predictor_data/focal_variables/normalized_z_sd_focal_3x3.tif",
-  "data/predictor_data/terraennaert_grundvand_10m/summer_predict.tif",
-  "data/predictor_data/terron_maps/terron_point.tif")
-ecodes_rast <- rast(raster_list[3])
-ecodes_stats <- data.frame(file = raster_list[c(1:41)],
-                           xres = ecodes_rast@ptr$res[1],
-                                    yres = ecodes_rast@ptr$res[1],
-                                    crs = crs(ecodes_rast, proj = T))
-raster_stats <- lapply(raster_list[-c(1:41)], 
-                       function(x){
-                         x_rast <- rast(paste0("../", x))
-                         data.frame(file = x,
-                                    xres = x_rast@ptr$res[1],
-                                    yres = x_rast@ptr$res[1],
-                                    crs = crs(x_rast, proj = T))
-                         }) %>% 
-  bind_rows() %>%
-  bind_rows(ecodes_stats,
-            .)
-
-# Add variable names to data frame and tidy up 
-raster_stats$var_name <- var_names
-raster_stats <- relocate(raster_stats, var_name, .before = file)
-raster_stats <- relocate(raster_stats, file, .after = crs)
-
-# Add indicator on whether variable is gonna be used in model or not
-raster_stats$use_in_model <- "Yes"
-raster_stats$use_in_model[raster_stats$var_name %in%
-c("forest_type_cloud",
-  "forest_type_con",
-  "heat_load_index",
-  "aspect",
-  "openness_mean",
-  "normalized_z_mean",
-  "twi")] <- "No"
-raster_stats$use_in_model[grepl("proportion", raster_stats$var_name)] <- "No"
-raster_stats$use_in_model[grepl("paw", raster_stats$var_name)] <- "No"
-raster_stats <- arrange(raster_stats, desc(use_in_model))
-
-raster_stats %>% kable() %>% kable_classic(font_size = 10)
 ```

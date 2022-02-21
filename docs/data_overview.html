@@ -173,30 +173,70 @@ pre code {
 </div>
 
 
-<div id="predictor-data-sources" class="section level2">
-<h2>Predictor data sources</h2>
-<p>List of predictor variables, their data sources and spatial characteristics of the data.</p>
-<pre><code>## Warning: [rast] can&#39;t  get proj4 from srs</code></pre>
-<table class=" lightable-classic" style="font-size: 10px; font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; margin-left: auto; margin-right: auto;">
+<div id="feature-selection" class="section level2">
+<h2>Feature Selection</h2>
+<div id="ecodes-dk15-descriptors" class="section level3">
+<h3>EcoDes-DK15 descriptors</h3>
+<p>From the 76 available EcoDes-DK15 layers (incl. auxiliary layers), we removed the date_stamp_xxx, point_count_xxx, point_source and building_proportion layers from the onset as we deemed those non-informative. We kept the sea and water mask layers for sub-setting of the training data to make sure only land pixels are included, but discarded the mask layers afterwards.</p>
+<p>Furthermore, we removed the following descriptors:</p>
+<ul>
+<li>canopy_openness</li>
+<li>point_count</li>
+<li>normalized_z_mean</li>
+<li>heat_load_index</li>
+<li>openness_mean</li>
+<li>twi descriptors</li>
+</ul>
+<p>… as the ecological meaning of these was conceptually redundant with other predictor variables (vegetation_density, canopy_height, solar_radiation, openness_difference and ground water respectively) and initial model runs indicated that these variables provide little additional input. We also removed the aspect variable because the aspect at 10 m resolution for the latter reason, and as conceptually the aspect at 10 m likely has little meaning on whether a forest cell is of high quality or not (all cardinal directions would theoretically be expected to be of high quality).</p>
+<p>Finally, we removed all vegetation_proportion variables as by themselves they had showed little predictive power in the initial model runs. We also capture the vertical lidar point cloud profile with the foliage_height_diversity variable.</p>
+</div>
+<div id="soil-predictors" class="section level3">
+<h3>Soil predictors</h3>
+<div id="type-and-composition" class="section level4">
+<h4>Type and composition</h4>
+<p>Soil type and composition are an important indicator in the key for the paragraph 25 forests. Here we used the following three predictors to account for differences in the soils across Denmark:</p>
+<ul>
+<li>Clay_utm32_10m</li>
+<li>Sand_utm32_10m</li>
+<li>Soc_utm32_10m</li>
+</ul>
+<p>These data were obtained from Derek. The original rasters were in 250 m resolution and I projected them to the EcoDes-DK grid 10 m UTM32N using a nearest neighbor resampling. This resampling strategy makes no assumption about the spatial distribution of the variables within a downsampled 250 m dataset, but might give the wrong impression that we have used higher-resolution predictor data than we actually have.</p>
+<p>I currently have no further information on how these data were generated.</p>
+</div>
+<div id="water-avilability" class="section level4">
+<h4>Water avilability</h4>
+<p>To estimate the wetness / water availability of the forest ground to the plants we use the summer near-surface ground water estimates from Koch et al. 2021.</p>
+<ul>
+<li>ns_groundwater_summer</li>
+</ul>
+</div>
+</div>
+<div id="focal-variables" class="section level3">
+<h3>Focal variables</h3>
+<p>To capture the spacial context around a pixel we selected four key predictor variables and calculated their mean and variation (sd) in a window of 110 m and 250 m around each pixel. We conducted a colinearity analysis and selected the following final four focal variables for the analysis:</p>
+<ul>
+<li>dtm_10m_sd_110m</li>
+<li>canopy_height_sd_110m</li>
+<li>vegetation_density_sd_110m</li>
+<li>ns_groundwater_summer_sd_110m</li>
+</ul>
+<p>You can read more about the selection process <a href="focal_var_selection.html">here</a>.</p>
+</div>
+</div>
+<div id="final-predictor-data-sources" class="section level2">
+<h2>Final predictor data sources</h2>
+Her is an overview of the final predictor data sources.
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:left;">
-var_name
-</th>
-<th style="text-align:right;">
-xres
-</th>
-<th style="text-align:right;">
-yres
+Predictor
 </th>
 <th style="text-align:left;">
-crs
+Source Dataset
 </th>
 <th style="text-align:left;">
-file
-</th>
-<th style="text-align:left;">
-use_in_model
+Ecological Meaning
 </th>
 </tr>
 </thead>
@@ -205,999 +245,220 @@ use_in_model
 <td style="text-align:left;">
 amplitude_mean
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/amplitude_mean/amplitude_mean.vrt
-</td>
-<td style="text-align:left;">
-Yes
+Quality of lidar signal reflected (proxy of biomass).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 amplitude_sd
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/amplitude_sd/amplitude_sd.vrt
-</td>
-<td style="text-align:left;">
-Yes
+Variation in quality of lidar signal reflected within 10 m pixel (proxy of variation in biomass).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 canopy_height
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/canopy_height/canopy_height.vrt
-</td>
-<td style="text-align:left;">
-Yes
+Lidar estimator of canopy height (95-percentile of height distribution of all vegetation points in 10 m pixel).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-canopy_openness
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+canopy_height_sd_110m
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/canopy_openness/canopy_openness.vrt
+Variation in lidar estimator of canopy height within 110 m focal window (11 x 11 pixels).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Clay_utm32_10m
 </td>
 <td style="text-align:left;">
-Yes
+SustainScapes / Unknown
+</td>
+<td style="text-align:left;">
+Estimated percentage clay content of soil (250 m resolution downscaled to 10 m).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 dtm_10m
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/dtm_10m/dtm_10m.vrt
-</td>
-<td style="text-align:left;">
-Yes
+Terrain height above sea level.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-inland_water_mask
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+dtm_10m_sd_110m
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/masks/inland_water_mask/inland_water_mask.vrt
-</td>
-<td style="text-align:left;">
-Yes
+Variation in terrain height above sea level within 110 m focal window (11 x 11 pixels).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-sea_mask
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+foliage_height_diversity
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/masks/sea_mask/sea_mask.vrt
-</td>
-<td style="text-align:left;">
-Yes
+Foliage height diversity MacArthur and MacArthur (1979) based on height bins by Wilson (1974)
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 normalized_z_sd
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
+Estimated variation in canopy height within 10 m pixel.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ns_groundwater_summer_sd_110m
 </td>
 <td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/normalized_z_sd/normalized_z_sd.vrt
+Koch et al. 2021
 </td>
 <td style="text-align:left;">
-Yes
+Estimate of depth of near-surface groundwater during an average summer.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ns_groundwater_summer_utm32_10m
+</td>
+<td style="text-align:left;">
+Koch et al. 2021
+</td>
+<td style="text-align:left;">
+Variation in the estimate of depth of near-surface groundwater during an average summer within a 110 m focal window (11 x 11 pixels).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 openness_difference
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
+Presence of linear features in the terrain (valleys, ridges etc.).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Sand_utm32_10m
 </td>
 <td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/openness_difference/openness_difference.vrt
+SustainScapes / Unkown
 </td>
 <td style="text-align:left;">
-Yes
+Estimated percentage sand content of soil (250 m resolution downscaled to 10 m).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 slope
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
+Terrain slope at 10 m
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Soc_utm32_10m
 </td>
 <td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/slope/slope.vrt
+SustainScapes / Unkown
 </td>
 <td style="text-align:left;">
-Yes
+Estimated percentage soil organic carbon content of soil (250 m resolution downscaled to 10 m).
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 solar_radiation
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+Peng et al. 2020
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
+Annual incident solar radiation based on terrain model (aspect and slope).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+terron_point
 </td>
 <td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/solar_radiation/solar_radiation.vrt
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-Yes
+Soil terron classes.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+treetype_bjer_dec
+</td>
+<td style="text-align:left;">
+Bjerreskov et al. 2021
+</td>
+<td style="text-align:left;">
+Decidous or coniferous forest.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
 vegetation_density
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
+<td style="text-align:left;">
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_density/vegetation_density.vrt
-</td>
-<td style="text-align:left;">
-Yes
+Denisty of vegetation points in 10 m lidar pixel.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-forest_type_dec
+vegetation_density_sd_110m
 </td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-data/predictor_data/conif_vs_broadleaf/forest_type_dec.tif
-</td>
-<td style="text-align:left;">
-Yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-canopy_height_focal_3x3
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-data/predictor_data/focal_variables/canopy_height_focal_3x3.tif
-</td>
-<td style="text-align:left;">
-Yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-normalized_zd_sd_focal_3x3
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-data/predictor_data/focal_variables/normalized_z_sd_focal_3x3.tif
-</td>
-<td style="text-align:left;">
-Yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-ns_groundwater_summer
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-</td>
-<td style="text-align:left;">
-data/predictor_data/terraennaert_grundvand_10m/summer_predict.tif
-</td>
-<td style="text-align:left;">
-Yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-terrons
-</td>
-<td style="text-align:right;">
-30.4
-</td>
-<td style="text-align:right;">
-30.4
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-data/predictor_data/terron_maps/terron_point.tif
-</td>
-<td style="text-align:left;">
-Yes
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-aspect
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/aspect/aspect.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-heat_load_index
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/heat_load_index/heat_load_index.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-normalized_z_mean
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/normalized_z_mean/normalized_z_mean.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-openness_mean
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/openness_mean/openness_mean.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-twi
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/twi/twi.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_00.0m-00.5m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_00.0m-00.5m/vegetation_proportion_00.0m-00.5m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_00.5m-01.0m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_00.5m-01.0m/vegetation_proportion_00.5m-01.0m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_01.0m-01.5m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_01.0m-01.5m/vegetation_proportion_01.0m-01.5m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_01.5m-02.0m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_01.5m-02.0m/vegetation_proportion_01.5m-02.0m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_02m-03m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_02m-03m/vegetation_proportion_02m-03m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_03m-04m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_03m-04m/vegetation_proportion_03m-04m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_04m-05m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_04m-05m/vegetation_proportion_04m-05m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_05m-06m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_05m-06m/vegetation_proportion_05m-06m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_06m-07m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_06m-07m/vegetation_proportion_06m-07m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_07m-08m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_07m-08m/vegetation_proportion_07m-08m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_08m-09m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_08m-09m/vegetation_proportion_08m-09m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_09m-10m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_09m-10m/vegetation_proportion_09m-10m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_10m-11m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_10m-11m/vegetation_proportion_10m-11m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_11m-12m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_11m-12m/vegetation_proportion_11m-12m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_12m-13m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_12m-13m/vegetation_proportion_12m-13m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_13m-14m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_13m-14m/vegetation_proportion_13m-14m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_14m-15m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_14m-15m/vegetation_proportion_14m-15m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_15m-16m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_15m-16m/vegetation_proportion_15m-16m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_16m-17m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_16m-17m/vegetation_proportion_16m-17m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_17m-18m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_17m-18m/vegetation_proportion_17m-18m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_18m-19m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_18m-19m/vegetation_proportion_18m-19m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_19m-20m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_19m-20m/vegetation_proportion_19m-20m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_20m-25m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_20m-25m/vegetation_proportion_20m-25m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-vegetation_proportion_25m-50m
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-F:/JakobAssmann/EcoDes-DK_v1.1.0/vegetation_proportion/vegetation_proportion_25m-50m/vegetation_proportion_25m-50m.vrt
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-forest_type_cloud
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-data/predictor_data/conif_vs_broadleaf/forest_type_cloud.tif
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-forest_type_con
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:right;">
-10.0
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-data/predictor_data/conif_vs_broadleaf/forest_type_con.tif
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-paw_160cm
-</td>
-<td style="text-align:right;">
-30.4
-</td>
-<td style="text-align:right;">
-30.4
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs
-</td>
-<td style="text-align:left;">
-data/predictor_data/plant_available_water/paw_160cm.tif
-</td>
-<td style="text-align:left;">
-No
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-paw_160cm_focal_3x3
-</td>
-<td style="text-align:right;">
-30.4
-</td>
-<td style="text-align:right;">
-30.4
-</td>
-<td style="text-align:left;">
-+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs
-</td>
 <td style="text-align:left;">
-data/predictor_data/focal_variables/a_ptv_focal_3x3.tif
+EcoDes-DK15
 </td>
 <td style="text-align:left;">
-No
+Variation of density of vegeation points amongst pixels within 110 m window (11 x 11 pixels).
 </td>
 </tr>
 </tbody>
