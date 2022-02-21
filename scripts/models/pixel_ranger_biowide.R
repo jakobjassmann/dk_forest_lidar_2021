@@ -21,30 +21,12 @@ train_data <- pixel_training_biowide %>%
   sample_n(1500) %>%
   #sample_frac(0.5) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
-  dplyr::select(-forest_type_cloud,
-                -forest_type_con,
-                -heat_load_index,
-                -aspect,
-                -openness_mean,
-                -normalized_z_mean,
-                -twi,
-                -contains("proportion"),
-                -contains("paw"))
+  dplyr::select(-sample_id, -biowide_region, -dereks_stratification)
 test_data <- pixel_valid_biowide %>% 
   sample_n(450) %>%
   #sample_frac(0.5) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
-  dplyr::select(-forest_type_cloud,
-                -forest_type_con,
-                -heat_load_index,
-                -aspect,
-                -openness_mean,
-                -normalized_z_mean,
-                -twi,
-                -contains("proportion"),
-                -contains("paw"))
+  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
 
 # Register parallel cluster
 cl <- makePSOCKcluster(30)
@@ -52,14 +34,13 @@ registerDoParallel(cl)
 
 # Optimise hyperparameters for boosted regression tree
 # 1) Determine optimum number of trees, fixing other parameters
-tuneGrid <- expand.grid(mtry = c(2:10),
+tuneGrid <- expand.grid(mtry = c(2:5),
                         splitrule = c("gini", "extratrees"),
                         min.node.size = c(1, 3, 5)) # Not stumps, range usually between 1-8
 
 rf_fit <- train(forest_value ~ .,
                 data = train_data,
                 method = "ranger",
-                preProc = c("center", "scale"),
                 trControl = trainControl(method = "repeatedcv", 
                                          repeats = 5, # Increase later
                                          classProbs = TRUE, 
@@ -74,7 +55,7 @@ rf_fit
 summary(rf_fit)
 varImp(rf_fit)$importance %>% arrange(desc(Overall))
 # Save final model
-save(rf_fit, file = "data/final_ranger_model_pixel_biowide.Rda")
+save(rf_fit, file = "data/models/final_ranger_model_pixel_biowide.Rda")
 
 # Stop Cluster
 stopCluster(cl)

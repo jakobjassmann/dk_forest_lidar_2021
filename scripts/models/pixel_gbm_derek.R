@@ -20,29 +20,11 @@ set.seed(24231)
 train_data <- pixel_training_derek %>% 
   sample_n(1500) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
-  dplyr::select(-forest_type_cloud,
-                -forest_type_con,
-                -heat_load_index,
-                -aspect,
-                -openness_mean,
-                -normalized_z_mean,
-                -twi,
-                -contains("proportion"),
-                -contains("paw"))
+  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
 test_data <- pixel_valid_derek %>% 
   sample_n(450) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) %>%
-  dplyr::select(-forest_type_cloud,
-                -forest_type_con,
-                -heat_load_index,
-                -aspect,
-                -openness_mean,
-                -normalized_z_mean,
-                -twi,
-                -contains("proportion"),
-                -contains("paw"))
+  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
 
 # Register parallel cluster
 cl <- makePSOCKcluster(30)
@@ -58,7 +40,6 @@ tuneGrid <- expand.grid(n.trees = seq(200,10000, 300), # Check range
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
-                 preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                          repeats = 5, # Increase later
                                          classProbs = TRUE, 
@@ -77,7 +58,6 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
-                 preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
@@ -96,7 +76,6 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
-                 preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
@@ -115,7 +94,6 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
-                 preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
@@ -134,7 +112,6 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
-                 preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
@@ -147,7 +124,7 @@ gbm_fit #15 n.minobsinode is optimal,
 
 
 # Fit final model with 10 fold cross validaiton
-tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
+tuneGrid <- expand.grid(n.trees = 1500, # 1100 optimal value determined above
                         shrinkage = 0.06, # 0.06 optimal
                         n.minobsinnode = 15, # Default value (range 5-15 common)
                         interaction.depth = 10 # Not stumps, range usually between 1-8
@@ -155,7 +132,6 @@ tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
-                 preProc = c("center", "scale"),
                  trControl = trainControl(method = "repeatedcv", 
                                           repeats = 10, 
                                           classProbs = TRUE, 
