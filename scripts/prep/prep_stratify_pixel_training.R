@@ -24,6 +24,7 @@ pixel_training_data <- pixel_training_data %>%
          -openness_mean,
          -normalized_z_mean,
          -canopy_openness,
+         -treetype_bjer_con,
          -twi) %>% 
   mutate(forest_value = factor(forest_value)) %>%
   na.omit()
