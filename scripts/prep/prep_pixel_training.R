@@ -305,7 +305,7 @@ rm(list = c("Clay_utm32_10m", "Sand_utm32_10m", "Soc_utm32_10m"))
 
 # Foliage height diversity
 foliage_height_diversity <- rast("data/predictor_data/foliage_height_diversity/foliage_height_diversity.tif")
-pixel_training_data_raw$foliage_height_diversity <- terra::extract(foliage_height_diversity, combined_sample_coords)
+pixel_training_data_raw$foliage_height_diversity <- terra::extract(foliage_height_diversity, combined_sample_coords)[,2]
 rm(foliage_height_diversity)
 
 # Save intermediate backup
