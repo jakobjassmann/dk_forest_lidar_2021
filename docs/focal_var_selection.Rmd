@@ -1,0 +1,136 @@
+---
+title: "DK Forest LiDAR - Focal predictors selection"
+author: "Jakob J. Assmann"
+date: "17/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sf)
+library(kableExtra)
+load("../data/training_data/pixel_training.Rda")
+pixel_training_data <- pixel_training_data %>%
+  st_drop_geometry() %>%
+  select(contains("110"), contains("250"),
+         dtm_10m,
+         vegetation_density,
+         ns_groundwater_summer,
+         canopy_height)
+pixel_training_data <- pixel_training_data[,order(colnames(pixel_training_data))]
+```
+
+## Content
+
+We caluclated the mean and sd in 110 m and 250 m windows for the following variables:
+1. dtm_10m
+2. canopy_height
+3. vegetation_density
+4. ns_ground_water
+
+Here is how those measures are correlated with their focal variables:
+
+```{r correlations, echo = FALSE, results = "asis"}
+# Generate correlation tables
+res <- cor(pixel_training_data, use = "complete.obs") %>% 
+  # Format numbers for looks
+  (function(x) {
+    x <- round(x, 2)
+    x <- formatC(x, digits = 2, format = "f", flag = "+")
+    x[lower.tri(x)] <- ""
+    return(x)}) %>%
+  # convert to dataframe
+  as.data.frame() %>%
+  # split by rows according to variable
+  split(sort(rep(1:4, 5))) %>%
+  # reduce columns to variable
+  mapply(function(x,y) {
+    x[,y]
+    }, x = ., y = list(1:5,6:10,11:15,16:20),
+    SIMPLIFY = F) %>%
+  # map over each variable to create table
+  lapply(function(x){
+    cat("<strong>", rownames(x)[1], "</strong>\n")
+    # tidy up row and column names
+    rownames(x)[2:5] <- gsub(paste0(rownames(x)[1], "_?"), "", rownames(x)[2:5])
+    colnames(x)[2:5] <- gsub(paste0(colnames(x)[1], "_?"), "", colnames(x)[2:5])
+        rownames(x)[1] <- "cell_10m"
+    colnames(x)[1] <- "cell_10m"
+    # change background for cells with cor <= 0.5
+    for(i in 1:ncol(x)){
+      x[,i] <- cell_spec(x[,i], 
+                         background = case_when(as.numeric(x[,i]) <= 0.5 ~ "lightgreen",
+                                                TRUE ~ "white"))
+    }
+    # Plot out kable
+    kable(x, format = "html", escape = F) %>%
+      kable_classic(font_size = 12, full_width = F, position = "left") %>%
+      print()
+    # add some spaces to allow pandoc to recognise separation
+    cat("\n\n\n\n")
+    return(NULL)})
+```
+
+## Variation Inflation Factors
+
+To reduce the number of features systematically, we calculate variance inflation
+factors (vIFs). A VIF above 5 indicates that the variable introduces multicoliniearity
+in the dataset. A conservative rule is to only keep variables with VIFs below 2.5.
+
+Here we do a stepwise selection based on the VIFs and the correlation tables above. 
+VIFs exceeding 5 are highlighted in red. 
+
+### 1) All variables
+
+``` {r echo = FALSE,}
+vifs <- usdm::vif(pixel_training_data)
+vifs$VIF <- cell_spec(round(vifs$VIF, 2),
+                      background = case_when(vifs$VIF >= 5 ~ "red",
+                                                TRUE ~ "white"),
+                      color = case_when(vifs$VIF >= 5 ~ "white",
+                                                TRUE ~ "black"))
+kable(vifs, format = "html", escape = F) %>%
+  kable_classic(font_size = 12, full_width = F, position = "left")
+
+```
+
+The mean variables seem to introduce a lot of colinearity (very high VIFs,
+and see correlation tables above). We drop them first. 
+
+### 2) Drop mean variables
+
+``` {r echo = FALSE,}
+vifs <- pixel_training_data %>% dplyr::select(-contains("mean")) %>% 
+  usdm::vif() 
+vifs$VIF <- cell_spec(round(vifs$VIF, 2),
+                      background = case_when(vifs$VIF >= 5 ~ "red",
+                                                TRUE ~ "white"),
+                      color = case_when(vifs$VIF >= 5 ~ "white",
+                                                TRUE ~ "black"))
+kable(vifs, format = "html", escape = F) %>%
+  kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
+The focal variables of different window sizes are highly correlated with each
+other. The correlation tables (above) suggest the 110 m windows are less correlated
+with the 10 m cell values, so we drop the 250 m windows next. 
+
+### 3) Drop 250 m variables
+
+``` {r echo = FALSE,}
+vifs <-  pixel_training_data %>% dplyr::select(-contains("mean"),
+                                      -contains("250")) %>% 
+  usdm::vif()
+vifs$VIF <- cell_spec(round(vifs$VIF, 2),
+                      background = case_when(vifs$VIF >= 5 ~ "red",
+                                                TRUE ~ "white"),
+                      color = case_when(vifs$VIF >= 5 ~ "white",
+                                                TRUE ~ "black"))
+kable(vifs, format = "html", escape = F) %>%
+  kable_classic(font_size = 12, full_width = F, position = "left")
+
+```
+
+The final set of variables includes only the 10 m cell values and the sd calculated
+for the 110 m windows. 
