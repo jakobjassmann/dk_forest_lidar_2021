@@ -16,9 +16,20 @@ pixel_training_data <- pixel_training_data %>%
   filter(!is.na(inland_water_mask)) %>%
   filter(!is.na(sea_mask)) %>%
   select(-contains("mask")) %>%
-  select(-clay, -sand, -soil_carbon) %>%
+  select(-contains("250")) %>%
+  select(-contains("mean_110")) %>%
+  select(-contains("proportion")) %>%
+  select(-heat_load_index,
+         -aspect,
+         -openness_mean,
+         -normalized_z_mean,
+         -canopy_openness,
+         -twi) %>% 
   mutate(forest_value = factor(forest_value)) %>%
   na.omit()
+
+# Check VIFs (takes a while to correlate)
+usdm::vif(pixel_training_data[,-(1:4)])
 
 # Set seed for pseudo random numbers
 set.seed(70222)
