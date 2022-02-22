@@ -16,6 +16,7 @@ library(ggtext)
 library(rnaturalearth)
 library(rasterVis)
 library(kableExtra)
+library(gbm)
 ```
 
 ## Training data overview
@@ -61,19 +62,41 @@ stratification based on the validation dataset in both stratification.
 biowide_regions <- read_sf("../data/stratification/biowide_georegions/biowide_zones.shp")
 dereks_strat <- rast("../data/stratification/derek_stratification/Results_2clim_5soil.tif") %>% as.polygons() %>% st_as_sf(crs = 25832) %>% mutate(Temp = factor(Temp))
 
+# Function to Generate performance table from list of confusion matrices
+performance_table <- function(cf_matrix_list){
+  performance_stats <- lapply(cf_matrix_list, function(x){
+    data.frame(Accuracy = round(x$overall["Accuracy"],2),
+               Error = round(1 - x$overall["Accuracy"],2),
+               Sensitivity = round(x$byClass["Sensitivity"],2),
+               Specificity = round(x$byClass["Specificity"],2),
+               FPR = round(1 - x$byClass["Specificity"],2),
+               UserAccuracy = round(x$byClass["Pos Pred Value"],2))
+  }) %>% bind_rows()
+  performance_stats <- data.frame(t(performance_stats))
+  names(performance_stats) <- names(cf_matrix_list)
+  performance_stats$Measure <- c("Accuracy",
+                                "Error",
+                                "Sensitivity (True Positive Rate)",
+                                "Specificity (True Negative Rate)",
+                                "Fall-out (False Positive Rate)",
+                                "Positive predictive value (User Accuracy)")
+  row.names(performance_stats) <- NULL
+  performance_stats <- relocate(performance_stats, Measure)
+  return(performance_stats)
+}
+
 # Function to plot performance in biowide regions
 plot_biowide_regions <- function(performance_overall,
                                             performance_list){
   
   # Extract statistics from performance_list
+  row_order <- sapply(biowide_regions$region, function (x) which(x == names(performance_list)))
   biowide_regions$accuracy <- sapply(performance_list, 
-                                     function(x) round(x$overall["Accuracy"],2))
-  biowide_regions$sens <- sapply(
-    performance_list, 
-    function(x) round(x$table[1,1] / (x$table[1,1] + x$table[2,1]), 2))
-  biowide_regions$spec <- sapply(
-    performance_list, 
-    function(x) round(x$table[2,2] / (x$table[2,2] + x$table[1,2]), 2))
+                                     function(x) round(x$overall["Accuracy"],2))[row_order]
+  biowide_regions$sens <- sapply(performance_list, 
+                                 function(x) round(x$byClass["Sensitivity"],2))[row_order]
+  biowide_regions$useracc <- sapply(performance_list, 
+                                 function(x) round(x$byClass["Pos Pred Value"],2))[row_order]
   
   biowide_regions <- mutate(
     biowide_regions,
@@ -121,7 +144,7 @@ plot_biowide_regions <- function(performance_overall,
                    "<span style='font-size:10pt; color:black'>",
                    "<br>Accuracy: ", accuracy,
                    "<br>Sensitivity: ", sens,
-                   "<br>Specifcity: ", spec,
+                   "<br>User Accuracy: ", useracc,
                    "</span>"))
   ggplot() + 
     geom_sf(aes(fill = region), data = biowide_regions) +
@@ -140,13 +163,9 @@ plot_biowide_regions <- function(performance_overall,
              ylim = st_bbox(biowide_regions)[c(2,4)] * c(0.975, 1.0125)) +
     labs(title = "Overall Performance",
       subtitle = paste0(
-      "Accuracy: ", round(performance_overall$overall["Accuracy"],2), 
-      "\nSensitivity: ", round(performance_overall$table[1,1] / 
-                                 (performance_overall$table[1,1] + 
-                                    performance_overall$table[2,1]), 2),
-      "\nSpecificity: ", round(performance_overall$table[2,2] / 
-                               (performance_overall$table[2,2] + 
-                                  performance_overall$table[1,2]), 2))) +
+      "Accuracy: ", round(performance_overall$overall["Accuracy"], 2), 
+      "\nSensitivity: ", round(performance_overall$byClass["Sensitivity"], 2),
+      "\nUser Accuracy: ", round(performance_overall$byClass["Pos Pred Value"], 2))) +
     theme_void() +
     theme(legend.position = "none",,
           plot.margin = margin(0,0,0,0, unit = "in"))
@@ -156,15 +175,15 @@ plot_biowide_regions <- function(performance_overall,
 plot_derek_regions <- function(performance_overall,
                                  performance_list){
   dereks_regions <- data.frame(region = paste0("Region ", c(1,2,3)))
+  names(performance_list) <- paste0("Region ", names(performance_list))
   # Extract statistics from performance_list
+  row_order <- sapply(dereks_regions$region, function (x) which(x == names(performance_list)))
   dereks_regions$accuracy <- sapply(performance_list, 
-                                     function(x) round(x$overall["Accuracy"],2))
-  dereks_regions$sens <- sapply(
-    performance_list, 
-    function(x) round(x$table[1,1] / (x$table[1,1] + x$table[2,1]), 2))
-  dereks_regions$spec <- sapply(
-    performance_list, 
-    function(x) round(x$table[2,2] / (x$table[2,2] + x$table[1,2]), 2))
+                                     function(x) round(x$overall["Accuracy"],2))[row_order]
+  dereks_regions$sens <- sapply(performance_list, 
+                                 function(x) round(x$byClass["Sensitivity"],2))[row_order]
+  dereks_regions$useracc <- sapply(performance_list, 
+                                 function(x) round(x$byClass["Pos Pred Value"],2))[row_order]
   
   dereks_regions <- 
     mutate(dereks_regions,
@@ -184,7 +203,7 @@ plot_derek_regions <- function(performance_overall,
                    "<span style='font-size:10pt; color:black'>",
                    "<br>Accuracy: ", accuracy,
                    "<br>Sensitivity: ", sens,
-                   "<br>Specifcity: ", spec,
+                   "<br>User Accuracy: ", useracc,
                    "</span>"))
   ggplot() + 
     geom_sf(data = dereks_strat, mapping = aes(fill = Temp), colour = NA) +
@@ -203,40 +222,14 @@ plot_derek_regions <- function(performance_overall,
              ylim = c(5898440 , 6482333)) +
     labs(title = "Overall Performance",
       subtitle = paste0(
-      "Accuracy: ", round(performance_overall$overall["Accuracy"],2), 
-      "\nSensitivity: ", round(performance_overall$table[1,1] / 
-                                 (performance_overall$table[1,1] + 
-                                    performance_overall$table[2,1]), 2),
-      "\nSpecificity: ", round(performance_overall$table[2,2] / 
-                               (performance_overall$table[2,2] + 
-                                  performance_overall$table[1,2]), 2))) +
+        "Accuracy: ", round(performance_overall$overall["Accuracy"], 2), 
+        "\nSensitivity: ", round(performance_overall$byClass["Sensitivity"], 2),
+        "\nUser Accuracy: ", round(performance_overall$byClass["Pos Pred Value"], 2))) +
     theme_void() +
     theme(legend.position = "none",,
           plot.margin = margin(0,0,0,0, unit = "in"))
 }
 
-# Function to Generate performance table from list of confusion matrices
-performance_table <- function(cf_matrix_list){
-  performance_stats <- lapply(cf_matrix_list, function(x){
-    data.frame(Accuracy = round(x$overall["Accuracy"],2),
-               Error = round(1 - x$overall["Accuracy"],2),
-               Sensitivity = round(x$byClass["Sensitivity"],2),
-               Specificity = round(x$byClass["Specificity"],2),
-               FPR = round(1 - x$byClass["Specificity"],2),
-               UserAccuracy = round(x$byClass["Pos Pred Value"],2))
-  }) %>% bind_rows()
-  performance_stats <- data.frame(t(performance_stats))
-  names(performance_stats) <- names(cf_matrix_list)
-  performance_stats$Measure <- c("Accuracy",
-                                "Error",
-                                "Sensitivity (True Positive Rate)",
-                                "Specificity (True Negative Rate)",
-                                "Fall-out (False Positive Rate)",
-                                "Positive predictive value (User Accuracy)")
-  row.names(performance_stats) <- NULL
-  performance_stats <- relocate(performance_stats, Measure)
-  return(performance_stats)
-}
 ```
 
 ## Models trained using BIOWIDE stratification
@@ -277,13 +270,24 @@ performance_biowide_derek <- pixel_valid_biowide %>%
     #print(confusionMat)
     return(confusionMat)
   }) 
-
+performance_biowide_forest_type <- pixel_valid_biowide %>% 
+  ungroup() %>%
+  split(., mutate(., tree_type = case_when(treetype_bjer_dec == 0 ~ "Coniferous",
+                                           treetype_bjer_dec == 1 ~ "Broadleaf")) %>%
+          pull(tree_type)) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
 ```
 
 ### Variable importance
 
 ``` {r biowide_variable_importnace, echo = FALSE}
-summary(gbm_biowide)
+summary(gbm_biowide, plotit = F)
 ```
 
 ### Performance in BIOWIDE regions:
@@ -295,7 +299,7 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_biowide), 
                            c("Overall", names(performance_biowide_biowide)))) %>%
-  kable() %>% kable_classic(font_size = 12, full_width = F)
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
 ### Perfromance in Derek's regions:
@@ -307,7 +311,15 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_derek), 
                   c("Overall", paste0("Region ", names(performance_biowide_derek))))) %>%
-  kable() %>% kable_classic(font_size = 12, full_width = F)
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
+### Performance by forest type (boradleaf vs. coniferous)
+
+``` {r biowide_performance_forest_type, echo = FALSE}
+performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_forest_type), 
+                  c("Overall", names(performance_biowide_forest_type)))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
 ## Models trained using Derek's stratification
@@ -344,13 +356,25 @@ performance_derek_derek <- pixel_valid_derek %>%
     confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
     #print(confusionMat)
     return(confusionMat)
+  })
+performance_derek_forest_type <- pixel_valid_derek %>% 
+  ungroup() %>%
+  split(., mutate(., tree_type = case_when(treetype_bjer_dec == 0 ~ "Coniferous",
+                                           treetype_bjer_dec == 1 ~ "Broadleaf")) %>%
+          pull(tree_type)) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
   }) 
 ```
 
 ### Variable importance
 
-```{r derek_variable_importance}
-summary(gbm_derek)
+```{r derek_variable_importance, echo = FALSE}
+summary(gbm_derek, plotit = F)
 ```
 
 ### Performance in BIOWIDE regions:
@@ -362,7 +386,7 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_derek_overall), performance_derek_biowide), 
                   c("Overall", names(performance_derek_biowide)))) %>%
-  kable() %>% kable_classic(font_size = 12, full_width = F)
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
 ### Perfromance in Derek's regions:
@@ -374,19 +398,14 @@ suppressWarnings(
 
 performance_table(setNames(c(list(performance_derek_overall), performance_derek_derek), 
                   c("Overall", paste0("Region ", names(performance_derek_derek))))) %>%
-  kable() %>% kable_classic(font_size = 12, full_width = F)
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
-# Performance by forest type
+### Performance by forest type (boradleaf vs. coniferous)
 
-```{r perf_by_forest_type, echo=FALSE}
-# pixel_valid_biowide %>% 
-#   mutate(forest_type = forest_type_cloud + 2 * forest_type_con + 3 * forest_type_dec) %>%
-#   mutate(forest_type = ordered(forest_type, levels = c(1,2,3))) %>% 
-#   split(.$forest_type) %>%
-#   setNames(., c("Cloudy", "Coniferous", "Broadleaf")) %>%
-#   map(function(test_data_region){
-#     test_preds_region <- predict(gbm_fit, newdata = test_data_region)
-#     confusionMatrix(data = test_preds_region, test_data_region$forest_value)
-# })
+``` {r derek_performance_forest_type, echo = FALSE}
+performance_table(setNames(c(list(performance_derek_overall), performance_derek_forest_type), 
+                  c("Overall", names(performance_biowide_forest_type)))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
+
