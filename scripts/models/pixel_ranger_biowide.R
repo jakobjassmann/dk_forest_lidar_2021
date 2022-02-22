@@ -30,6 +30,7 @@ test_data <- pixel_valid_biowide %>%
 
 # Register parallel cluster
 cl <- makePSOCKcluster(30)
+#cl <- makePSOCKcluster(16)
 registerDoParallel(cl)
 
 # Optimise hyperparameters for boosted regression tree
@@ -37,7 +38,9 @@ registerDoParallel(cl)
 tuneGrid <- expand.grid(mtry = c(2:5),
                         splitrule = c("gini", "extratrees"),
                         min.node.size = c(1, 3, 5)) # Not stumps, range usually between 1-8
-
+# tuneGrid <- expand.grid(mtry = 5,
+#                         splitrule = c("gini"),
+#                         min.node.size = c(1, 3)) # Not stumps, range usually between 1-8
 rf_fit <- train(forest_value ~ .,
                 data = train_data,
                 method = "ranger",
@@ -51,11 +54,16 @@ rf_fit <- train(forest_value ~ .,
 
 rf_fit
 
-# Variable importnace
-summary(rf_fit)
-varImp(rf_fit)$importance %>% arrange(desc(Overall))
 # Save final model
 save(rf_fit, file = "data/models/final_ranger_model_pixel_biowide.Rda")
 
 # Stop Cluster
 stopCluster(cl)
+
+# Variable importance
+summary(rf_fit)
+varImp(rf_fit)$importance %>% arrange(desc(Overall))
+
+# Validate on test set
+test_preds <- predict(rf_fit, newdata = test_data)
+confusionMatrix(data = test_preds, test_data$forest_value)

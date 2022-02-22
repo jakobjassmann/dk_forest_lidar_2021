@@ -28,6 +28,7 @@ test_data <- pixel_valid_derek %>%
 
 # Register parallel cluster
 cl <- makePSOCKcluster(30)
+#cl <- makePSOCKcluster(16)
 registerDoParallel(cl)
 
 # Optimise hyperparameters for boosted regression tree
