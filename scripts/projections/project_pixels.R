@@ -1,107 +1,148 @@
 # DK Forest LiDAR by pixel projections across the EcoDes dataset
 # Jakob Assmann j.assmann@bio.au.dk 9 July 2021
 
+## 1) Data and environment prep ----
+
 # Dependencies
 library(caret)
 library(gbm)
 library(raster)
+library(terra)
 library(parallel)
+library(pbapply)
 library(sf)
+library(rgdal)
 
 # Load model
-load("data/final_gbm_model_pixel.Rda")
+load("data/models/final_gbm_model_pixel_biowide.Rda")
 
-# Get list of ecodes variable folders
-ecodes_vars <- list.dirs("data/ecodes_subset/", recursive = T)
-ecodes_vars_sub <- ecodes_vars[!grepl(".*masks", ecodes_vars)][-1]
-ecodes_vars_sub <- ecodes_vars_sub[!grepl(".*vegetation_proportion$", ecodes_vars_sub)]
+# Rename model 
+model_fit <- gbm_fit
+rm(gbm_fit)
 
-# get mask folders
-inland_mask <- ecodes_vars[grepl("inland_water", ecodes_vars)]
-sea_mask <- ecodes_vars[grepl("sea", ecodes_vars)]
+# Get list predictor variables 
+pred_vars<- summary(model_fit, plotit = F)$var
 
-# get list of EcoDes-DK15 tiles
-ecodes_tiles <- list.files(ecodes_vars_sub[1], pattern = "tif")
+# Get list of ecodes vrt files available (using dir here to speed up listing)
+ecodes_dir <- "F:/JakobAssmann/EcoDes-DK15_v1.1.0/" 
+ecodes_vars <- shell(paste0("dir /b /s ", 
+                              gsub("/", "\\\\", ecodes_dir),
+                              "*.vrt"),
+                       intern = T) %>%
+  gsub("\\\\", "/", .) %>%
+  gsub("(.*/).*vrt$", "\\1", .)
+
+# Filter out ecodes predictor files
+ecodes_preds <- sapply(ecodes_vars, 
+                       function(x) gsub(".*/(.*)/", "\\1", x) %in% pred_vars) %>%
+  ecodes_vars[.]
+
+# Get list of remaining predictors
+pred_files <- list.files("data/predictor_data/", "tif", recursive = T, 
+                         full.names = T)
+pred_files <- sapply(pred_files, 
+                     function(x) gsub(".*/(.*)\\.tif", "\\1", x) %in% pred_vars) %>%
+  pred_files[.]
+
+# Confirm that all predictors are present
+dummy <- sapply(pred_vars, function(x){
+  times_present <- grepl(paste0("*./", x, "[\\./].*"),
+                         c(ecodes_vars, pred_files)) %>%
+    sum()
+  if(times_present == 1){
+    cat(x, "ok.\n")
+  } else {
+      warning(x, "is not present or present multiple times")
+    }
+  })
+rm(dummy)
+
+# get list of EcoDes-DK15 tiles (using dir here to speed up listing)
+ecodes_tiles <- ecodes_vars[grepl("dtm", ecodes_vars)] %>%
+  gsub("(.*/).*", "\\1", .) %>%
+  gsub("/", "\\\\", .) %>%
+  paste0("dir /b /s ", ., "*.tif") %>%
+  shell(intern = T) %>%
+  gsub("\\\\", "/", .)
 ecodes_tiles <- gsub(".*([0-9]{4}_[0-9]{3}).tif", "\\1", ecodes_tiles)
 
-# get boundaries for bornholm
-bornholm_raster <- raster("data/conif_vs_broadleaf/bornholm_forest_con_vs_dec.tif")
-bornholm_bounds <- as(extent(bornholm_raster), "SpatialPolygons")
-crs(bornholm_bounds) <- crs(bornholm_raster)
+# get mask folders /files
+inland_mask <- ecodes_vars[grepl("inland_water", ecodes_vars)]
+sea_mask <- ecodes_vars[grepl("sea", ecodes_vars)]
+forest_mask_file <- "data/basemap_forests/forest_mask.tif"
 
-# Write function to carry out predictons for one tile
+# Write function to carry out predictions for one tile
 project_tile <- function(tile_id, 
-                         ecodes_vars_sub,
+                         ecodes_preds,
+                         pred_files,
                          inland_mask,
                          sea_mask,
-                         gbm_fit){
-  # Load rasters as stack
-  tile_stack <- stack(paste0(ecodes_vars_sub, "/",
-                           gsub(".*/(.*)$", "\\1", ecodes_vars_sub),
-                           "_", tile_id, ".tif"))
+                         forest_mask_file,
+                         model_fit){
+  # Status for debugging
+  cat(tile_id, "\n")
+  
+  # Load ecodes rasters as stack
+  tile_stack <- try(rast(paste0(ecodes_preds, 
+                           gsub(".*/(.*)/$", "\\1", ecodes_preds),
+                           "_", tile_id, ".tif")),
+                    silent = T)
+  # If that did not work we are dealing with a corner tile where the extent
+  # differes between variables. We need to crop to common extent
+  if(class(tile_stack) == "try-error"){
+    # find smallest extent
+    min_extent <- sapply(paste0(ecodes_preds, 
+                       gsub(".*/(.*)/$", "\\1", ecodes_preds),
+                       "_", tile_id, ".tif"),
+           function(x) ncell(rast(x))) %>% which.min()
+    min_extent <- ext(rast(paste0(ecodes_preds, 
+                                     gsub(".*/(.*)/$", "\\1", ecodes_preds),
+                                     "_", tile_id, ".tif")[min_extent]))
+    tile_stack <- sapply(paste0(ecodes_preds, 
+                                gsub(".*/(.*)/$", "\\1", ecodes_preds),
+                                "_", tile_id, ".tif"),
+                         function(x){
+                           crop(rast(x), min_extent)
+                         }) %>% Reduce(c, .)
+    
+  }
   names(tile_stack) <- gsub("_[0-9]{4}_[0-9]{3}", "", names(tile_stack))
   
   # Get tile boundaries
-  tile_bounds <- as(extent(tile_stack), "SpatialPolygons")
-  crs(tile_bounds) <- crs(tile_stack)
+  tile_bounds <- ext(tile_stack)
   
-  # Load and add forest_type data (Bornholm raster if needed)
-  if(is.null(intersect(tile_bounds, bornholm_bounds))){
-    forest_type_cloud <- raster("data/conif_vs_broadleaf/forest_type_cloud.tif")
-    forest_type_con <- raster("data/conif_vs_broadleaf/forest_type_con.tif")
-    forest_type_dec <- raster("data/conif_vs_broadleaf/forest_type_dec.tif")
-  } else {
-    forest_type_cloud <- raster("data/conif_vs_broadleaf/bornholm_forest_type_cloud.tif")
-    forest_type_con <- raster("data/conif_vs_broadleaf/bornholm_forest_type_con.tif")
-    forest_type_dec <- raster("data/conif_vs_broadleaf/bornholm_forest_type_dec.tif")
-    names(forest_type_cloud) <- "forest_type_cloud"
-    names(forest_type_con) <- "forest_type_con"
-    names(forest_type_dec) <- "forest_type_dec"
-  }
-  forest_type_cloud <- crop(forest_type_cloud, tile_stack)
-  forest_type_con <- crop(forest_type_con, tile_stack)
-  forest_type_dec <- crop(forest_type_dec, tile_stack)
-  tile_stack <- stack(tile_stack, 
-                      forest_type_cloud, 
-                      forest_type_con, 
-                      forest_type_dec)
-  
-  # Add plant available water
-  paw_160cm <- raster("data/plant_available_water/paw_160cm.tif")
-  paw_160cm_projected <- projectRaster(paw_160cm, tile_stack)
-  tile_stack <- stack(tile_stack, paw_160cm_projected)
-  
-  # Add focal variables
-  paw_160cm_focal <- raster("data/focal_variables/a_ptv_focal_3x3.tif")
-  canopy_height_focal <- raster("data/focal_variables/canopy_height_focal_3x3.tif")
-  normalized_zd_sd_focal <- raster("data/focal_variables/normalized_z_sd_focal_3x3.tif")
-  
-  paw_160cm_focal_projected <- projectRaster(paw_160cm_focal, tile_stack)
-  names(paw_160cm_focal_projected) <- "paw_160cm_focal_3x3"
-  
-  canopy_height_focal <- crop(canopy_height_focal, tile_stack)
-  names(canopy_height_focal) <- "canopy_height_focal_3x3"
-  
-  normalized_zd_sd_focal <- crop(normalized_zd_sd_focal, tile_stack)
-  names(normalized_zd_sd_focal) <- "normalized_zd_sd_focal_3x3"
-  
-  tile_stack <- stack(tile_stack, paw_160cm_focal_projected, canopy_height_focal, normalized_zd_sd_focal)
+  # Load an crop other predictors
+  tile_stack <- sapply(pred_files, 
+                        function(pred_file){
+                          pred_raster <- rast(pred_file)
+                          pred_raster <- crop(pred_raster, tile_bounds)
+                          return(pred_raster)
+                        }) %>%
+    rast() %>%
+    setNames(gsub(".*/(.*)\\..*", "\\1", pred_files)) %>%
+    c(tile_stack, .)
   
   # Mask water from stack
-  tile_stack <- mask(tile_stack, raster(paste0(inland_mask, "/inland_water_mask_", tile_id, ".tif")))
-  tile_stack <- mask(tile_stack, raster(paste0(sea_mask, "/sea_mask_", tile_id, ".tif")))
+  inland_mask_rast <- rast(paste0(inland_mask, "/inland_water_mask_", tile_id, ".tif"))
+  if(ext(tile_stack) != ext(inland_mask_rast)) inland_mask_rast <- crop(inland_mask_rast, tile_bounds)
+  tile_stack <- mask(tile_stack, inland_mask_rast)
+  
+  sea_mask_rast <- rast(paste0(sea_mask, "/sea_mask_", tile_id, ".tif"))
+  if(ext(tile_stack) != ext(sea_mask_rast)) sea_mask_rast <- crop(sea_mask_rast, tile_bounds)
+  tile_stack <- mask(tile_stack, sea_mask_rast)
   
   # Mask non forest from raster
-  forest_mask <- raster("data/projections/basemap2016_forest_mask_no_agri_forests.tif")
-  forest_mask_cropped <- crop(forest_mask, tile_stack)
+  forest_mask <- rast(forest_mask_file)
+  forest_mask_cropped <- crop(forest_mask, tile_bounds)
   tile_stack <- mask(tile_stack, forest_mask_cropped) 
 
-  # predict raster
-  predictions_raster <- predict(tile_stack, gbm_fit)
+  # project raster
+  project_raster <- predict(as(tile_stack, "Raster"), model_fit)
+  crs(project_raster) <- crs(tile_stack)
   
   # write out raster
-  writeRaster(predictions_raster, 
-               paste0("data/projections/by_pixel/forest_quality_by_pixel_" , tile_id, ".tif"),
+  writeRaster(project_raster, 
+               paste0("data/projections/gbm_biowide/forest_quality_" , tile_id, ".tif"),
                overwrite = T)
   
   # Return nothing
@@ -110,22 +151,29 @@ project_tile <- function(tile_id,
 # project_tile(ecodes_tiles[12], ecodes_vars_sub, inland_mask, sea_mask, gbm_fit)
 
 # Prepare parallel environmemt
-cl <- makeCluster(74)
+cl <- makeCluster(46)
 clusterEvalQ(cl, library(raster))
+clusterEvalQ(cl, library(terra))
+clusterEvalQ(cl, library(caret))
 clusterEvalQ(cl, library(gbm))
-clusterExport(cl, varlist = "bornholm_bounds")
+clusterEvalQ(cl, library(dplyr))
+clusterEvalQ(cl, library(rgdal))
 # Run projections
-parLapply(cl, ecodes_tiles,
-          project_tile,
-          ecodes_vars_sub = ecodes_vars_sub,
-          inland_mask = inland_mask,
-          sea_mask = sea_mask,
-          gbm_fit = gbm_fit)
+pblapply(ecodes_tiles,
+         project_tile,
+         ecodes_preds = ecodes_preds,
+         pred_files = pred_files,
+         inland_mask = inland_mask,
+         sea_mask = sea_mask,
+         forest_mask_file = forest_mask_file,
+         model_fit = model_fit,
+         cl = cl)
 
 # Stop cluster
 stopCluster(cl)
 
 # Generate VRT file
+setwd("data/projections/gbm_biowide/")
 gdal_utils("buildvrt",
-           source = list.files("data/projections/by_pixel/",".tif$", full.names = T),
-           destination = "data/projections/by_pixel/forest_quality_by_pixel.vrt")
+           source = list.files(".tif$"),
+           destination = "forest_quality_gbm_biowide.vrt")
