@@ -10,7 +10,7 @@ Classifciations of Denmark's forest quality using the [EcoDes-DK15 dataset](http
 - [Random forest performance](ranger_models_performance.html)
 
 # Projections
-- [Projections Placeholder Link]()
+- [Projections Visualisation](data_vis.html)
 
 
-[last update: 21 February 2021]
+[last update: 24 February 2021]
