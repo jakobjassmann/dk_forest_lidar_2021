@@ -43,4 +43,5 @@ vignettes/*.pdf
 /data/canopy_height_points/
 /data/predictor_data/
 /data/projections/
-/data/response_data
+/data/response_data/
+/data/basemap_forests/
