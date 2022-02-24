@@ -1,7 +1,7 @@
 # DK Forest LiDAR by pixel projections across the EcoDes dataset
 # Jakob Assmann j.assmann@bio.au.dk 9 July 2021
 
-## 1) Data and environment prep ----
+## 1) Prep environment ----
 
 # Dependencies
 library(caret)
@@ -13,64 +13,11 @@ library(pbapply)
 library(sf)
 library(rgdal)
 
-# Load model
+# Load models
 load("data/models/final_gbm_model_pixel_biowide.Rda")
+load("data/models/final_ranger_model_pixel_biowide.Rda")
 
-# Rename model 
-model_fit <- gbm_fit
-rm(gbm_fit)
-
-# Get list predictor variables 
-pred_vars<- summary(model_fit, plotit = F)$var
-
-# Get list of ecodes vrt files available (using dir here to speed up listing)
-ecodes_dir <- "F:/JakobAssmann/EcoDes-DK15_v1.1.0/" 
-ecodes_vars <- shell(paste0("dir /b /s ", 
-                              gsub("/", "\\\\", ecodes_dir),
-                              "*.vrt"),
-                       intern = T) %>%
-  gsub("\\\\", "/", .) %>%
-  gsub("(.*/).*vrt$", "\\1", .)
-
-# Filter out ecodes predictor files
-ecodes_preds <- sapply(ecodes_vars, 
-                       function(x) gsub(".*/(.*)/", "\\1", x) %in% pred_vars) %>%
-  ecodes_vars[.]
-
-# Get list of remaining predictors
-pred_files <- list.files("data/predictor_data/", "tif", recursive = T, 
-                         full.names = T)
-pred_files <- sapply(pred_files, 
-                     function(x) gsub(".*/(.*)\\.tif", "\\1", x) %in% pred_vars) %>%
-  pred_files[.]
-
-# Confirm that all predictors are present
-dummy <- sapply(pred_vars, function(x){
-  times_present <- grepl(paste0("*./", x, "[\\./].*"),
-                         c(ecodes_vars, pred_files)) %>%
-    sum()
-  if(times_present == 1){
-    cat(x, "ok.\n")
-  } else {
-      warning(x, "is not present or present multiple times")
-    }
-  })
-rm(dummy)
-
-# get list of EcoDes-DK15 tiles (using dir here to speed up listing)
-ecodes_tiles <- ecodes_vars[grepl("dtm", ecodes_vars)] %>%
-  gsub("(.*/).*", "\\1", .) %>%
-  gsub("/", "\\\\", .) %>%
-  paste0("dir /b /s ", ., "*.tif") %>%
-  shell(intern = T) %>%
-  gsub("\\\\", "/", .)
-ecodes_tiles <- gsub(".*([0-9]{4}_[0-9]{3}).tif", "\\1", ecodes_tiles)
-
-# get mask folders /files
-inland_mask <- ecodes_vars[grepl("inland_water", ecodes_vars)]
-sea_mask <- ecodes_vars[grepl("sea", ecodes_vars)]
-forest_mask_file <- "data/basemap_forests/forest_mask.tif"
-
+## 2) Function definitions ----
 # Write function to carry out predictions for one tile
 project_tile <- function(tile_id, 
                          ecodes_preds,
@@ -78,7 +25,8 @@ project_tile <- function(tile_id,
                          inland_mask,
                          sea_mask,
                          forest_mask_file,
-                         model_fit){
+                         model_fit,
+                         model_name){
   # Status for debugging
   cat(tile_id, "\n")
   
@@ -142,38 +90,166 @@ project_tile <- function(tile_id,
   
   # write out raster
   writeRaster(project_raster, 
-               paste0("data/projections/gbm_biowide/forest_quality_" , tile_id, ".tif"),
+               paste0("data/projections/", model_name, 
+                      "/forest_quality_" , tile_id, ".tif"),
                overwrite = T)
   
   # Return nothing
   return(NULL)
 }
+# Function test line:
 # project_tile(ecodes_tiles[12], ecodes_vars_sub, inland_mask, sea_mask, gbm_fit)
 
-# Prepare parallel environmemt
-cl <- makeCluster(46)
-clusterEvalQ(cl, library(raster))
-clusterEvalQ(cl, library(terra))
-clusterEvalQ(cl, library(caret))
-clusterEvalQ(cl, library(gbm))
-clusterEvalQ(cl, library(dplyr))
-clusterEvalQ(cl, library(rgdal))
-# Run projections
-pblapply(ecodes_tiles,
-         project_tile,
-         ecodes_preds = ecodes_preds,
-         pred_files = pred_files,
-         inland_mask = inland_mask,
-         sea_mask = sea_mask,
-         forest_mask_file = forest_mask_file,
-         model_fit = model_fit,
-         cl = cl)
+# Function to project all tiles for a model
+project_model <- function(model_fit,
+                          model_name,
+                          ncores){
+  # Status
+  cat("Projections for", model_name, "\n\n")
+  
+  # Check whether folder for projections exists, prompt user in case it does
+  # and delete if requested. 
+  if(dir.exists(paste0("data/projections/", model_name, "/"))){
+    delete <- readline(paste0("Folder exists: 'data/projections/", model_name, 
+                              "/' - Delete folder? [y/n]: "))
+    if(delete == "y") { 
+      unlink(paste0("Folder exists: data/projections/"), 
+             recursive=TRUE)
+    } else if(delete == "n"){
+      cat("\nOkay, stopping projections.")
+      return(1)
+    } else{
+      cat("\nInvalid response, stopping projections.")
+      return(1)
+    }
+  }
+  # Create dir
+  dir.create(paste0("data/projections/", model_name, "/"))
+  
+  # Prepare environment for model projections
+  cat("Gathering EcoDes-DK15 predictor layers ...\n")
+  
+  # Get list of predictor variables 
+  if(model_fit$method == "gbm"){
+    pred_vars <- summary(model_fit, plotit = F)$var
+  } else if(model_fit$method == "ranger") {
+    pred_vars <- row.names(varImp(model_fit)$importance)
+  } else {
+    warning("Model Type:", model_fit$method, "not recognised.",
+            "\n Adapt project_model() to method to allow for predictor",
+            "variable extraction.")
+  }   
+  # Get list of ecodes vrt files available (using dir here to speed up listing)
+  ecodes_dir <- "F:/JakobAssmann/EcoDes-DK15_v1.1.0/" 
+  ecodes_vars <- shell(paste0("dir /b /s ", 
+                              gsub("/", "\\\\", ecodes_dir),
+                              "*.vrt"),
+                       intern = T) %>%
+    gsub("\\\\", "/", .) %>%
+    gsub("(.*/).*vrt$", "\\1", .)
+  
+  # Filter out ecodes predictor files
+  ecodes_preds <- sapply(ecodes_vars, 
+                         function(x) gsub(".*/(.*)/", "\\1", x) %in% pred_vars) %>%
+    ecodes_vars[.]
+  
+  # Get list of remaining predictors
+  cat("Gathering additional predictor layers ...\n")
+  pred_files <- list.files("data/predictor_data/", "tif", recursive = T, 
+                           full.names = T)
+  pred_files <- sapply(pred_files, 
+                       function(x) gsub(".*/(.*)\\.tif", "\\1", x) %in% pred_vars) %>%
+    pred_files[.]
+  
+  # get list of EcoDes-DK15 tiles (using dir here to speed up listing)
+  ecodes_tiles <- ecodes_vars[grepl("dtm", ecodes_vars)] %>%
+    gsub("(.*/).*", "\\1", .) %>%
+    gsub("/", "\\\\", .) %>%
+    paste0("dir /b /s ", ., "*.tif") %>%
+    shell(intern = T) %>%
+    gsub("\\\\", "/", .)
+  ecodes_tiles <- gsub(".*([0-9]{4}_[0-9]{3}).tif", "\\1", ecodes_tiles)
 
-# Stop cluster
-stopCluster(cl)
+  # Confirm that all predictors are present
+  cat("\nConfirming  all predictor layers are present:\n\n")
+  dummy <- sapply(pred_vars, function(x){
+    times_present <- grepl(paste0("*./", x, "[\\./].*"),
+                           c(ecodes_vars, pred_files)) %>%
+      sum()
+    if(times_present == 1){
+      cat("\t", x, "\tok.\n")
+    } else {
+      warning(x, "is not present or present multiple times")
+      return(1)
+    }
+  })
+  rm(dummy)
+  
+  # get mask folders /files
+  cat("\nGathering masks ...\n")
+  inland_mask <- ecodes_vars[grepl("inland_water", ecodes_vars)]
+  sea_mask <- ecodes_vars[grepl("sea", ecodes_vars)]
+  forest_mask_file <- "data/basemap_forests/forest_mask.tif"
+  
+  # Prepare parallel environmemt
+  cat("Preparing parallel environment ...\n")
+  cl <- makeCluster(ncores)
+  clusterEvalQ(cl, library(raster))
+  clusterEvalQ(cl, library(terra))
+  clusterEvalQ(cl, library(caret))
+  clusterEvalQ(cl, library(gbm))
+  clusterEvalQ(cl, library(dplyr))
+  clusterEvalQ(cl, library(rgdal))
+  
+  # Run projections
+  cat("\nStarting projections...\n")
+  pblapply(ecodes_tiles,
+           project_tile,
+           ecodes_preds = ecodes_preds,
+           pred_files = pred_files,
+           inland_mask = inland_mask,
+           sea_mask = sea_mask,
+           forest_mask_file = forest_mask_file,
+           model_fit = model_fit,
+           model_name = model_name,
+           cl = cl)
+  
+  # Stop cluster
+  cat("Stopping cluster ...\n")
+  stopCluster(cl)
 
-# Generate VRT file
-setwd("data/projections/gbm_biowide/")
-gdal_utils("buildvrt",
-           source = list.files(".tif$"),
-           destination = "forest_quality_gbm_biowide.vrt")
+  current_wd <- getwd()
+  setwd(paste0("data/projections/", model_name, "/"))
+  
+  # Generate VRT file
+  cat("Generating VRT file ... \n")
+  gdal_utils("buildvrt",
+             source = list.files(pattern = "tif$"),
+             destination = paste0("forest_quality_", model_name, ".vrt"))
+  
+  # Generate Cloud Optimised GeoTiff from VRT (and project to EPSG:4326)
+  cat("Generating Cloud Optimised GeoTiff ... \n")
+  gdal_utils("warp",
+             source = paste0("forest_quality_", model_name, ".vrt"),
+             destination = paste0("forest_quality_", model_name, "_cog_epsg4326.tif.vrt"),
+             options = c(
+               "-t_srs", "EPSG:4326",
+               "-of", "COG",
+               "-co", "RESAMPLING=NEAREST",
+               "-co", "TILING_SCHEME=GoogleMapsCompatible",
+               "-co", "COMPRESS=DEFLATE",
+               "-co", "NUM_THREADS=46"
+             ))
+  setwd(current_wd)
+  
+  # Status
+  cat("Done.\n\n")
+  
+  # Return
+  return(NULL)
+}
+
+## 3) Execute projections
+project_model(gbm_fit, "gbm_biowide", 46)
+project_model(rf_fit, "ranger_biowide", 46)
+## End of file
