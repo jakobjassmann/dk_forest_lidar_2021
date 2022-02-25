@@ -1211,9 +1211,6 @@ Positive predictive value (User Accuracy)
 <div id="variable-importance-1" class="section level3">
 <h3>Variable importance</h3>
 <p>Variable importance for this random forest model, determined using the “permutation” option in ranger.</p>
-<pre class="r"><code>varImp(rf_derek)$importance %&gt;% arrange(desc(Overall))%&gt;%
-  kable() %&gt;%
-  kable_classic(full_width = FALSE, position = &quot;left&quot;)</code></pre>
 <table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
 <thead>
 <tr>
