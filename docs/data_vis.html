@@ -67,13 +67,37 @@
                 maxZoom: 20
         });
 
+        // Add GBM projections
         // Set URL to geotiff file
-        var url_to_geotiff_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg4326.tif";
+        var gbm_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg4326.tif";
 
         // Parse GeoTiff file using georaster
-        parseGeoraster(url_to_geotiff_file).then(georaster => {
+        parseGeoraster(gbm_projections_file).then(georaster => {
             console.log("georaster:", georaster);
             var gbm_projections = new GeoRasterLayer({
+                georaster,
+                opacity: 0.75,
+                resolution: 128, // 128 seems to be a good compromise for now
+                pixelValuesToColorFn: function(pixelValues){
+                var pixelValue = pixelValues[0]; // Only one band
+                if (pixelValue >= 1 && pixelValue <= 2){
+                    var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod"); 
+                    return colour;
+                } else {
+                    return undefined;
+                }   
+            }
+            });
+
+
+        // Add random forest projections
+        // Set URL to geotiff file
+        var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg4326.tif";
+
+        // Parse GeoTiff file using georaster
+        parseGeoraster(ranger_projections_file).then(georaster => {
+            console.log("georaster:", georaster);
+            var ranger_projections = new GeoRasterLayer({
                 georaster,
                 opacity: 0.75,
                 resolution: 128, // 128 seems to be a good compromise for now
@@ -113,7 +137,8 @@
         var overlayMaps = {
             //"<h4>Data Types</h4>" : "",
             "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Training Polygons</strong></span>": trainingPolys,
-            "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections</strong></span>": gbm_projections
+            "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections</strong></span>": gbm_projections,
+            "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Random Forest Projections</strong></span>": ranger_projections
         };
         // Add controls
         L.control.layers(baseMaps, overlayMaps, {collapsed:false}).addTo(map);
@@ -136,7 +161,7 @@
         var title = L.control({ position: "bottomleft" });
         title.onAdd = function(map) {
             var div = L.DomUtil.create("div", "legend");
-            div.innerHTML += "<h4>Denmark Forest Quality Projections</h4>";
+            div.innerHTML += "<h4>Denmark Forest Quality Projections v0.1.0 (beta)</h4>";
             div.innerHTML += '<span style="margin: 0 0 0 14px">Assmann et al. (in prep).</span><br>';
             div.innerHTML += '<span style="margin: 0 0 0 14px">Contact: j.assmann@bio.au.dk</span>';
         return div;
