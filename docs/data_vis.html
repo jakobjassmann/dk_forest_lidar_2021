@@ -1,14 +1,45 @@
 <!DOCTYPE html>
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+    
+    <!--- Leaflet CSS stylesheet (needs to be loaded before leaflet js) --->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+
+    <!--- Leaflet js --->
 	<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+    
+    <!--- Georaster js --->
+    <script src="https://unpkg.com/georaster"></script>
+    
+    <!--- Georaster-Layer-For-leaflet js --->
 	<script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+    
+    <!--- Leaflet AJAX js for easy remote loading of GeoJSON geometries --->
     <script src="leaflet.ajax.min.js"></script>
+    
+    
+    <!---  File specific CSS styles ---> 
 	<style>
         /* Overall map style */
         #map {position: absolute; top: 0; bottom: 0; left: 0; right: 0;}
-        /* Legend specific */ 
+
+        /* Leaflet layer control */
+        .leaflet-control-layers{
+            background: rgba(255, 255, 255, 0.8);
+            padding: 6px 8px;
+            color: #555;
+            border-radius: 0;
+        }
+
+        .leaflet-control-layers:before{ 
+            content:"Layer Control"; 
+            color:#777;
+            font: normal normal bold 16px Arial, Helvetica, sans-serif;
+            padding: 6px 4px;
+            line-height: 24px;
+        }
+
+        /* Legend specific */
         .legend {
             padding: 6px 8px;
             font: 14px Arial, Helvetica, sans-serif;
@@ -18,132 +49,173 @@
             /*border-radius: 5px;*/
             line-height: 24px;
             color: #555;
-            }
-            .legend h4 {
+        }
+
+        .legend h4 {
             text-align: left;
             font-size: 16px;
             margin: 2px 12px 8px;
             color: #777;
-            }
+        }
 
-            .legend span {
+        .legend span {
             position: relative;
             margin: 0 0px 0 8px;
             bottom: 3px;
-            }
+        }
 
-            .legend i {
+        .legend i {
             width: 18px;
             height: 18px;
             float: left;
             margin: 0 8px 0 14px;
             opacity: 1;
-            }
+        }
 
-            .legend i.icon {
+        .legend i.icon {
             background-size: 18px;
             background-color: rgba(255, 255, 255, 1);
-            }
-
+        }
 	</style>
-
 </head>
 <body>
+    <!--- Leflet map container --->
 	<div id = "map"></div>
-    <script src="https://unpkg.com/georaster"></script>
-    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+
+    <!--- JS script to build leaflet map --->
 	<script>
+        // Load base tiles ----
 
-
-        // Base tiles (open streetmap)
+        // OpenStreetMap
         var OpenStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
         {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         });
-        // Base tiles (CartoDB dark Matter)
+        // CartoDB Dark Matter
         var CartoDB_DarkMatter = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
                 subdomains: 'abcd',
                 maxZoom: 20
         });
 
-        // Set URL to geotiff file
-        var url_to_geotiff_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg4326.tif";
-
-        // Parse GeoTiff file using georaster
-        parseGeoraster(url_to_geotiff_file).then(georaster => {
-            console.log("georaster:", georaster);
-            var gbm_projections = new GeoRasterLayer({
-                georaster,
-                opacity: 0.75,
-                resolution: 128, // 128 seems to be a good compromise for now
-                pixelValuesToColorFn: function(pixelValues){
-                var pixelValue = pixelValues[0]; // Only one band
-                if (pixelValue >= 1 && pixelValue <= 2){
-                    var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod"); 
-                    return colour;
-                } else {
-                    return undefined;
-                }   
-            }
-            });
-
+        // Load training polygons ----
 
         // Training polygons layer
         var trainingPolysFile = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/training_polygons.geojson"
         var trainingPolys = new L.GeoJSON.AJAX(trainingPolysFile, {
-          style: function(feature) {
+            style: function(feature) {
                switch (feature.properties.forest_quality) {
                    case 'high': return {color: "DarkSlateGray", fillOpacity: 0.8};
                    case 'low':   return {color: "SaddleBrown", fillOpacity: 0.8};
                    }
-               }
+           }
         });
 
-        // Initiate leaflet
-        var map = L.map('map', 
-            { center: [56.25, 12], zoom: 7,
-                layers: [CartoDB_DarkMatter, gbm_projections] });
+        // Load GeoRasters ----
 
-        // Prepare controls
-        var baseMaps = {
-            "<span style='font: 14px Arial, Helvetica, sans-serif'>Dark Matter</span>": CartoDB_DarkMatter,
-            "<span style='font: 14px Arial, Helvetica, sans-serif'>OpenStreetMap</span>": OpenStreetMap
-            };
-        var overlayMaps = {
-            //"<h4>Data Types</h4>" : "",
-            "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Training Polygons</strong></span>": trainingPolys,
-            "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections</strong></span>": gbm_projections
-        };
-        // Add controls
-        L.control.layers(baseMaps, overlayMaps, {collapsed:false}).addTo(map);
-        
-        // Add Legend
-        var legend = L.control({ position: "bottomright" });
-        legend.onAdd = function(map) {
-            var div = L.DomUtil.create("div", "legend");
-            div.innerHTML += "<h4>Projected Forest Quality</h4>";
-            div.innerHTML += '<i style="background: DarkGreen"></i><span>High Quality</span><br>';
-            div.innerHTML += '<i style="background: DarkGoldenRod"></i><span>Low Quality</span><br>'
-            div.innerHTML += "<h4>Training Polygons</h4>";
-            div.innerHTML += '<i style="background: DarkSlateGray"></i><span>High Quality</span><br>';
-            div.innerHTML += '<i style="background: SaddleBrown"></i><span>Low Quality</span><br>'
-        return div;
-        };
-        legend.addTo(map);
-    
-        // Add Title
-        var title = L.control({ position: "bottomleft" });
-        title.onAdd = function(map) {
-            var div = L.DomUtil.create("div", "legend");
-            div.innerHTML += "<h4>Denmark Forest Quality Projections</h4>";
-            div.innerHTML += '<span style="margin: 0 0 0 14px">Assmann et al. (in prep).</span><br>';
-            div.innerHTML += '<span style="margin: 0 0 0 14px">Contact: j.assmann@bio.au.dk</span>';
-        return div;
-        };
-        title.addTo(map);
+        // Set URLs to COG files
+        var gbm_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg4326.tif";
+        var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg4326.tif";
 
-        });
+        // Parse GeoTiff file using georaster
+        // All leaflet related code after this has to be in the arrow function
+        Promise.all([
+                // Load Georasters as bands
+                parseGeoraster(gbm_projections_file),
+                parseGeoraster(ranger_projections_file)
+            ]).then(georasters => {
+                // Lambda function starting here
+
+                // Send output of georasters object to console for cotnrol
+                console.log("Georasters:", georasters);
+                
+                // GepRasterLayer for gbm_projecitons (Band 1)
+                var gbm_projections = new GeoRasterLayer({
+                    georasters,
+                    opacity: 1,//0.75,
+                    resolution: 128, // 128 seems to be a good compromise for now
+                    pixelValuesToColorFn: function(pixelValues){
+                        var pixelValue = pixelValues[0]; // Choose first band!
+                        if (pixelValue >= 1 && pixelValue <= 2){
+                            var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod"); 
+                            return colour;
+                        } else {
+                            return undefined;
+                        }   
+                    }
+                });
+
+                // GepRasterLayer for ranger_projections (Band 2)
+                var ranger_projections = new GeoRasterLayer({
+                    georasters,
+                    opacity: 1, //0.75,
+                    resolution: 128, // 128 seems to be a good compromise for now
+                    pixelValuesToColorFn: function(pixelValues){
+                        var pixelValue = pixelValues[1]; // (Band 2)
+                        if (pixelValue >= 1 && pixelValue <= 2){
+                            var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod"); 
+                            return colour;
+                        } else {
+                            return undefined;
+                        }   
+                    }
+                });
+            
+                // Initiate leaflet ----
+
+                var map = L.map('map', { 
+                   center: [56.25, 12], // Centered on Denmark
+                    zoom: 7, // Worked well
+                    layers: [CartoDB_DarkMatter, gbm_projections] // Default layers
+                });
+
+                // Set Legend ----
+
+                // Define and style legend
+                var legend = L.control({ position: "bottomright" });
+                legend.onAdd = function(map) {
+                    var div = L.DomUtil.create("div", "legend");
+                    div.innerHTML += "<h4>Projected Forest Quality</h4>";
+                    div.innerHTML += '<i style="background: DarkGreen"></i><span>High Quality</span><br>';
+                    div.innerHTML += '<i style="background: DarkGoldenRod"></i><span>Low Quality</span><br>'
+                    div.innerHTML += "<h4>Training Polygons</h4>";
+                    div.innerHTML += '<i style="background: DarkSlateGray"></i><span>High Quality</span><br>';
+                    div.innerHTML += '<i style="background: SaddleBrown"></i><span>Low Quality</span><br>'
+                return div;
+                };
+                legend.addTo(map);
+            
+                // Set Title ----
+
+                // Define and style title
+                var title = L.control({ position: "bottomleft" });
+                title.onAdd = function(map) {
+                    var div = L.DomUtil.create("div", "legend");
+                    div.innerHTML += "<h4>Denmark Forest Quality Projections v0.1.0 (beta)</h4>";
+                    div.innerHTML += '<span style="margin: 0 0 0 14px">Assmann et al. (in prep).</span><br>';
+                    div.innerHTML += '<span style="margin: 0 0 0 14px">Contact: j.assmann@bio.au.dk</span>';
+                return div;
+                };
+                // Add to map
+                title.addTo(map);
+
+                // Set controls ----
+
+                // Define and style layer groups
+                var baseMaps = {
+                    "<span style='font: 14px Arial, Helvetica, sans-serif'>Dark Matter</span>": CartoDB_DarkMatter,
+                    "<span style='font: 14px Arial, Helvetica, sans-serif'>OpenStreetMap</span>": OpenStreetMap
+                    };
+                var overlayMaps = {
+                    //"<h4>Data Types</h4>" : "",
+                    "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Training Polygons</strong></span>": trainingPolys,
+                    "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections</strong> (default)</span>": gbm_projections,
+                    "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Random Forest Projections</strong></span>": ranger_projections
+                };
+                // Add to map
+                L.control.layers(baseMaps, overlayMaps, {collapsed:false}).addTo(map);
+
+        }); // End of arrow function
 	</script>
 </body>
 </html>
