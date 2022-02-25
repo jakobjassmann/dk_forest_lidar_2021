@@ -227,13 +227,12 @@ project_model <- function(model_fit,
              source = list.files(pattern = "tif$"),
              destination = paste0("forest_quality_", model_name, ".vrt"))
   
-  # Generate Cloud Optimised GeoTiff from VRT (and project to EPSG:4326)
+  # Generate Cloud Optimised GeoTiff from VRT (and project to EPSG:3857)
   cat("Generating Cloud Optimised GeoTiff ... \n")
   gdal_utils("warp",
              source = paste0("forest_quality_", model_name, ".vrt"),
-             destination = paste0("forest_quality_", model_name, "_cog_epsg4326.tif"),
+             destination = paste0("forest_quality_", model_name, "_cog_epsg3857.tif"),
              options = c(
-               "-t_srs", "EPSG:4326",
                "-of", "COG",
                "-co", "RESAMPLING=NEAREST",
                "-co", "TILING_SCHEME=GoogleMapsCompatible",
