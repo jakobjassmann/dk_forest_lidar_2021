@@ -1,16 +1,18 @@
-# Outputs from the DK Forest LiDAR Project
-Classifciations of Denmark's forest quality using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar).
+# DK Forest LiDAR Project
+Classifcations of Denmark's forest quality using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar) and other spatial data.
 
 # Data description
 - [Predictor overview](data_overview.html)
 - [Focal (window) predictor selection](focal_var_selection.html)
 
 # Model performance
-- [GBM model performance](gbm_models_performance.html)
-- [Random forest performance](ranger_models_performance.html)
+- [Gradient Boosting performance](gbm_models_performance.html)
+- [Random Forest performance](ranger_models_performance.html)
 
-# Projections
-- [Projections Visualisation](data_vis.html)
+# Outputs
+- [Map of projections (Leaflet Web App)](data_vis.html)
 
+---
+Aarhus University / VegDyn / SustainScapes
 
-[last update: 24 February 2021]
+[last update: 25 February 2021]
