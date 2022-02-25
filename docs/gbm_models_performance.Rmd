@@ -240,16 +240,20 @@ stratification.
 ```{r data_prep_biowide, echo = FALSE, results='hide'}
 # Load validation data
 load("../data/training_data/pixel_valid_biowide.Rda")
+# Load training data
+load("../data/training_data/pixel_training_biowide.Rda")
 
 # Load model
 load("../data/models/final_gbm_model_pixel_biowide.Rda")
 gbm_biowide <- gbm_fit
 rm(gbm_fit)
 
+# Calculate performance stats for validation data
 performance_biowide_overall <- predict(gbm_biowide, 
                                        newdata = pixel_valid_biowide) %>%
   confusionMatrix(data = ., 
                   pixel_valid_biowide$forest_value)
+
 performance_biowide_biowide <- pixel_valid_biowide %>% 
   ungroup() %>%
   split(., .$biowide_region) %>%
@@ -260,6 +264,7 @@ performance_biowide_biowide <- pixel_valid_biowide %>%
     #print(confusionMat)
     return(confusionMat)
   }) 
+
 performance_biowide_derek <- pixel_valid_biowide %>% 
   ungroup() %>%
   split(., .$dereks_stratification) %>%
@@ -270,6 +275,7 @@ performance_biowide_derek <- pixel_valid_biowide %>%
     #print(confusionMat)
     return(confusionMat)
   }) 
+
 performance_biowide_forest_type <- pixel_valid_biowide %>% 
   ungroup() %>%
   split(., mutate(., tree_type = case_when(treetype_bjer_dec == 0 ~ "Coniferous",
@@ -282,9 +288,53 @@ performance_biowide_forest_type <- pixel_valid_biowide %>%
     #print(confusionMat)
     return(confusionMat)
   }) 
+
+# Calculate performance stats for training data
+performance_biowide_overall_training <- predict(gbm_biowide, 
+                                       newdata = pixel_training_biowide) %>%
+  confusionMatrix(data = ., 
+                  pixel_training_biowide$forest_value)
+
+performance_biowide_biowide_training <- pixel_training_biowide %>% 
+  ungroup() %>%
+  split(., .$biowide_region) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+
+performance_biowide_derek_training <- pixel_training_biowide %>% 
+  ungroup() %>%
+  split(., .$dereks_stratification) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+
+performance_biowide_forest_type_training <- pixel_training_biowide %>% 
+  ungroup() %>%
+  split(., mutate(., tree_type = case_when(treetype_bjer_dec == 0 ~ "Coniferous",
+                                           treetype_bjer_dec == 1 ~ "Broadleaf")) %>%
+          pull(tree_type)) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+
 ```
 
 ### Variable importance
+
+Variable importance for this boosted regression tree model.
 
 ``` {r biowide_variable_importnace, echo = FALSE}
 summary(gbm_biowide, plotit = F)
@@ -292,33 +342,71 @@ summary(gbm_biowide, plotit = F)
 
 ### Performance in BIOWIDE regions:
 
-```{r biowide_biowide_performance_map, echo = FALSE}
+Performance map based on the <span style="color: green">independent validation data</span>:
+
+``` {r biowide_biowide_performance_map, echo = FALSE}
 suppressWarnings(
   plot_biowide_regions(performance_biowide_overall,
                        performance_biowide_biowide))
+```
 
+Performance table based on the <span style="color: green">independent validation data</span>:
+
+``` {r biowide_biowide_performance_table, echo = FALSE}
 performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_biowide), 
                            c("Overall", names(performance_biowide_biowide)))) %>%
   kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
+Performance table based on the <span style="color: red">dependent training data</span>:
+
+``` {r biowide_biowide_performance_table_training, echo = FALSE}
+performance_table(setNames(c(list(performance_biowide_overall_training), performance_biowide_biowide_training), 
+                           c("Overall", names(performance_biowide_biowide_training)))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
 ### Perfromance in Derek's regions:
+
+Performance map based on the <span style="color: green">independent validation data</span>:
 
 ``` {r biowide_derek_performance_map, echo = FALSE}
 suppressWarnings(
   plot_derek_regions(performance_biowide_overall,
                      performance_biowide_derek))
+```
 
+Performance table based on the <span style="color: green">independent validation data</span>:
+
+``` {r biowide_derek_performance_table, echo = FALSE}
 performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_derek), 
                   c("Overall", paste0("Region ", names(performance_biowide_derek))))) %>%
   kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
+Performance table based on the <span style="color: red">dependent training data</span>:
+
+``` {r biowide_derek_performance_table_training, echo = FALSE}
+performance_table(setNames(c(list(performance_biowide_overall_training), performance_biowide_derek_training), 
+                  c("Overall", paste0("Region ", names(performance_biowide_derek_training))))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
 ### Performance by forest type (boradleaf vs. coniferous)
+
+Performance table based on the <span style="color: green">independent validation data</span>:
 
 ``` {r biowide_performance_forest_type, echo = FALSE}
 performance_table(setNames(c(list(performance_biowide_overall), performance_biowide_forest_type), 
                   c("Overall", names(performance_biowide_forest_type)))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
+Performance table based on the <span style="color: red">dependent training data</span>:
+
+``` {r biowide_performance_forest_type_training, echo = FALSE}
+performance_table(setNames(c(list(performance_biowide_overall_training), performance_biowide_forest_type_training), 
+                  c("Overall", names(performance_biowide_forest_type_training)))) %>%
   kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
@@ -328,15 +416,20 @@ performance_table(setNames(c(list(performance_biowide_overall), performance_biow
 # Load validation data
 load("../data/training_data/pixel_valid_derek.Rda")
 
+# Load training data
+load("../data/training_data/pixel_training_derek.Rda")
+
 # Load model
 load("../data/models/final_gbm_model_pixel_derek.Rda")
 gbm_derek <- gbm_fit
 rm(gbm_fit)
 
+# Calculate performance statistics for validation data
 performance_derek_overall <- predict(gbm_derek, 
                                        newdata = pixel_valid_derek) %>%
   confusionMatrix(data = ., 
                   pixel_valid_derek$forest_value)
+
 performance_derek_biowide <- pixel_valid_derek %>% 
   ungroup() %>%
   split(., .$biowide_region) %>%
@@ -347,6 +440,7 @@ performance_derek_biowide <- pixel_valid_derek %>%
     #print(confusionMat)
     return(confusionMat)
   }) 
+
 performance_derek_derek <- pixel_valid_derek %>% 
   ungroup() %>%
   split(., .$dereks_stratification) %>%
@@ -357,7 +451,49 @@ performance_derek_derek <- pixel_valid_derek %>%
     #print(confusionMat)
     return(confusionMat)
   })
+
 performance_derek_forest_type <- pixel_valid_derek %>% 
+  ungroup() %>%
+  split(., mutate(., tree_type = case_when(treetype_bjer_dec == 0 ~ "Coniferous",
+                                           treetype_bjer_dec == 1 ~ "Broadleaf")) %>%
+          pull(tree_type)) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+
+# Calculate performance statistics for training data
+performance_derek_overall_training <- predict(gbm_derek, 
+                                       newdata = pixel_training_derek) %>%
+  confusionMatrix(data = ., 
+                  pixel_training_derek$forest_value)
+
+performance_derek_biowide_training <- pixel_training_derek %>% 
+  ungroup() %>%
+  split(., .$biowide_region) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_derek, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+
+performance_derek_derek_training <- pixel_training_derek %>% 
+  ungroup() %>%
+  split(., .$dereks_stratification) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(gbm_derek, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  })
+
+performance_derek_forest_type_training <- pixel_training_derek %>% 
   ungroup() %>%
   split(., mutate(., tree_type = case_when(treetype_bjer_dec == 0 ~ "Coniferous",
                                            treetype_bjer_dec == 1 ~ "Broadleaf")) %>%
@@ -373,35 +509,67 @@ performance_derek_forest_type <- pixel_valid_derek %>%
 
 ### Variable importance
 
+Variable importance for this boosted regression tree model.
+
 ```{r derek_variable_importance, echo = FALSE}
 summary(gbm_derek, plotit = F)
 ```
 
 ### Performance in BIOWIDE regions:
 
+Performance map based on the <span style="color: green">independent validation data</span>:
+
 ```{r derek_biowide_performance_map, echo = FALSE}
 suppressWarnings(
   plot_biowide_regions(performance_derek_overall,
                        performance_derek_biowide))
+```
 
+Performance table based on the <span style="color: green">independent validation data</span>:
+
+``` {r derek_biowide_performance_table, echo = FALSE}
 performance_table(setNames(c(list(performance_derek_overall), performance_derek_biowide), 
                   c("Overall", names(performance_derek_biowide)))) %>%
   kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
+Performance table based on the <span style="color: red">dependent training data</span>:
+
+``` {r derek_biowide_performance_table_training, echo = FALSE}
+performance_table(setNames(c(list(performance_derek_overall_training), performance_derek_biowide_training), 
+                  c("Overall", names(performance_derek_biowide_training)))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
 ### Perfromance in Derek's regions:
+
+Performance map based on the <span style="color: green">independent validation data</span>:
 
 ``` {r derek_derek_performance_map, echo = FALSE}
 suppressWarnings(
   plot_derek_regions(performance_derek_overall,
                      performance_derek_derek))
+```
 
+Performance table based on the <span style="color: green">independent validation data</span>:
+
+``` {r derek_derek_performance_table, echo = FALSE}
 performance_table(setNames(c(list(performance_derek_overall), performance_derek_derek), 
                   c("Overall", paste0("Region ", names(performance_derek_derek))))) %>%
   kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
+Performance table based on the <span style="color: red">dependent training data</span>:
+
+``` {r derek_derek_performance_table_training, echo = FALSE}
+performance_table(setNames(c(list(performance_derek_overall_training), performance_derek_derek_training), 
+                  c("Overall", paste0("Region ", names(performance_derek_derek_training))))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
 ### Performance by forest type (boradleaf vs. coniferous)
+
+Performance table based on the <span style="color: green">independent validation data</span>:
 
 ``` {r derek_performance_forest_type, echo = FALSE}
 performance_table(setNames(c(list(performance_derek_overall), performance_derek_forest_type), 
@@ -409,3 +577,10 @@ performance_table(setNames(c(list(performance_derek_overall), performance_derek_
   kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
 ```
 
+Performance table based on the <span style="color: red">dependent training data</span>:
+
+``` {r derek_performance_forest_type_training, echo = FALSE}
+performance_table(setNames(c(list(performance_derek_overall_training), performance_derek_forest_type_training), 
+                  c("Overall", names(performance_biowide_forest_type_training)))) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
