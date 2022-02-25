@@ -231,7 +231,7 @@ project_model <- function(model_fit,
   cat("Generating Cloud Optimised GeoTiff ... \n")
   gdal_utils("warp",
              source = paste0("forest_quality_", model_name, ".vrt"),
-             destination = paste0("forest_quality_", model_name, "_cog_epsg4326.tif.vrt"),
+             destination = paste0("forest_quality_", model_name, "_cog_epsg4326.tif"),
              options = c(
                "-t_srs", "EPSG:4326",
                "-of", "COG",
