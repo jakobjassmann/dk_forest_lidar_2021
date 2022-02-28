@@ -14,7 +14,7 @@ Classifications of Denmark's forest quality using the [EcoDes-DK15 dataset](http
 ## Map of projections
 - [Leaflet web app](data_vis.html)
 
-## Data
+## Data outputs
 - [Gradient Boosting Projections v0.1.0 (23 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg3857_v0.1.0.tif)
 - [Random Forest Projections v0.1.0 (37 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v0.1.0.tif)
 - [Disturbance map v0.1.0 (36 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.1.0.tif)
