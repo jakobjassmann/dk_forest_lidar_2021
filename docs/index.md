@@ -9,7 +9,7 @@ Classifcations of Denmark's forest quality using the [EcoDes-DK15 dataset](https
 - [Gradient Boosting performance](gbm_models_performance.html)
 - [Random Forest performance](ranger_models_performance.html)
 
-## Maps of projections
+## Map of projections
 - [Leaflet web app](data_vis.html)
 
 ---
