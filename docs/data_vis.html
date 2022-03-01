@@ -17,9 +17,9 @@
     <!--- Leaflet AJAX js for easy remote loading of GeoJSON geometries --->
     <script src="js/leaflet.ajax.min.js"></script>
     
-    <!--- Leaflet Mouse Coordinates https://github.com/PowerPan/leaflet.mouseCoordinate--->
-    <link rel="stylesheet" href="js/leaflet.mouseCoordinate.css"></link>
-    <script src="js/leaflet.mouseCoordinate.js"></script>
+    <!--- Leaflet Mouse Coordinates https://github.com/ardhi/Leaflet.MousePosition --->
+    <link rel="stylesheet" href="js/L.Control.MousePosition.css"></link>
+    <script src="js/L.Control.MousePosition.js"></script>
     
     <!---  File specific CSS styles ---> 
 	<style>
@@ -109,6 +109,9 @@
             zoom: 7, // Worked well
             layers: [CartoDB_DarkMatter] // Default layers
         });
+
+        // Add mouse coordinates
+        L.control.mousePosition().addTo(map);
 
         // create map panes to control order of overlays
         map.createPane('gbm_projections');
@@ -302,9 +305,6 @@
         };
         // Add to map
         title.addTo(map);
-
-        // Add mouse coordinates
-        //L.control.mouseCoordinate({gpsLong: false}).addTo(map);
 
         // End of Leaflet script.
 	</script>
