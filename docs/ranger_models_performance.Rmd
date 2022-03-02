@@ -1,10 +1,9 @@
 ---
 title: "DK Forest LiDAR - Random Forest Model Performance"
 author: "Jakob Assmann"
-date: "2/3/2022"
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
 output: 
-  html_document: default
-  pdf_document: default
+  html_document
 ---
 
 ```{r setup, include=FALSE}

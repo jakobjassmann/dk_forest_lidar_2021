@@ -1,10 +1,9 @@
 ---
-title: "DK Forest LiDAR - Focal predictors selection"
+title: "DK Forest LiDAR - Focal predictor selection"
 author: "Jakob J. Assmann"
-date: "2/3/2022"
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
 output:
-  html_document: default
-  pdf_document: default
+  html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -18,18 +17,19 @@ pixel_training_data <- pixel_training_data %>%
   select(contains("110"), contains("250"),
          dtm_10m,
          vegetation_density,
-         ns_groundwater_summer,
+         ns_groundwater_summer_utm32_10m,
          canopy_height)
 pixel_training_data <- pixel_training_data[,order(colnames(pixel_training_data))]
 ```
 
 ## Content
 
-We caluclated the mean and sd in 110 m and 250 m windows for the following variables:
-1. dtm_10m
-2. canopy_height
-3. vegetation_density
-4. ns_ground_water
+We calculated the mean and sd in 110 m and 250 m windows for the following variables:
+
+- dtm_10m
+- canopy_height
+- vegetation_density
+- ns_ground_water
 
 Here is how those measures are correlated with their focal variables:
 
@@ -77,10 +77,10 @@ res <- cor(pixel_training_data, use = "complete.obs") %>%
 ## Variation Inflation Factors
 
 To reduce the number of features systematically, we calculate variance inflation
-factors (vIFs). A VIF above 5 indicates that the variable introduces multicoliniearity
+factors (vIFs). A VIF above 5 indicates that the variable introduces multicolliniearity
 in the dataset. A conservative rule is to only keep variables with VIFs below 2.5.
 
-Here we do a stepwise selection based on the VIFs and the correlation tables above. 
+Here we carry out a step-wise selection based on the VIFs and the correlation tables above. 
 VIFs exceeding 5 are highlighted in red. 
 
 ### 1) All variables
@@ -97,7 +97,7 @@ kable(vifs, format = "html", escape = F) %>%
 
 ```
 
-The mean variables seem to introduce a lot of colinearity (very high VIFs,
+The mean variables seem to introduce a lot of collinearity (very high VIFs,
 and see correlation tables above). We drop them first. 
 
 ### 2) Drop mean variables
@@ -134,5 +134,5 @@ kable(vifs, format = "html", escape = F) %>%
 
 ```
 
-The final set of variables includes only the 10 m cell values and the sd calculated
-for the 110 m windows. 
+**The final set of variables includes only the 10 m cell values and the sd calculated
+for the 110 m windows.**
