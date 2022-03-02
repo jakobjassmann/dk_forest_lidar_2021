@@ -1,5 +1,5 @@
 ---
-title: "DK Forest LiDAR - Gradien Boosting Model Performance"
+title: "DK Forest LiDAR - Gradient Boosting Model Performance"
 author: "Jakob Assmann"
 date: "`r format(Sys.Date(), '%d/%m/%Y')`"
 output: 
