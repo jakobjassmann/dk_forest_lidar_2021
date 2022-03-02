@@ -1,8 +1,10 @@
 ---
 title: "DK Forest LiDAR - Random Forest Model Performance"
 author: "Jakob Assmann"
-date: "23/8/2021"
-output: html_document
+date: "2/3/2022"
+output: 
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
