@@ -1,7 +1,7 @@
 L.Control.MousePosition = L.Control.extend({
   options: {
     position: 'bottomleft',
-    separator: ' : ',
+    separator: '',
     emptyString: 'Unavailable',
     lngFirst: false,
     numDigits: 5,
@@ -25,8 +25,8 @@ L.Control.MousePosition = L.Control.extend({
   _onMouseMove: function (e) {
     var lng = this.options.lngFormatter ? this.options.lngFormatter(e.latlng.lng) : L.Util.formatNum(e.latlng.lng, this.options.numDigits);
     var lat = this.options.latFormatter ? this.options.latFormatter(e.latlng.lat) : L.Util.formatNum(e.latlng.lat, this.options.numDigits);
-    var value = this.options.lngFirst ? lng + this.options.separator + lat : lat + this.options.separator + lng;
-    var prefixAndValue = this.options.prefix + ' ' + value;
+    var value = this.options.lngFirst ? lng + this.options.separator + lat : '<td>Lat:</td><td style="width: 55px; text-align: center">' + lat + '</td>' + '<td>' + this.options.separator + '</td>' + '<td>Lon:</td><td style="width: 55px; text-align: center">' + lng + '</td>';
+    var prefixAndValue = this.options.prefix + '<table style="border-spacing: 0; border-collapse: collapse; padding: 0; margin: 0"><tr> ' + value + ' </tr></table>';
     this._container.innerHTML = prefixAndValue;
   }
 
