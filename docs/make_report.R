@@ -4,21 +4,42 @@
 
 # Dependencies
 library(rmarkdown)
+library(webshot)
 library(pdftools)
 
+# Set base names and order of files to include
+report_files <- paste0("docs/",
+                        c("index.pdf",
+                          "data_overview.pdf",
+                          "focal_var_selection.pdf",
+                          "gbm_models_performance.pdf",
+                          "ranger_models_performance.pdf",
+                          "summary_stats.pdf"
+                        ))
+
 # Generate pdf of index.md
-render("index.md", pdf_document())
+render("docs/index.md", html_document())
 
-# Set list of pdfs to combine
-report_files <- c(
-  "index.pdf",
-  "data_overview.pdf",
-  "focal_var_selection.pdf",
-  "gbm_models_performance.pdf",
-  "ranger_models_performance.pdf",
-  "summary_stats.pdf"
-)
+# Check whether other files whether an RMD exist, rerender and convert to PDF
+lapply(report_files, function(x){
+  x <- gsub("(.*)\\..*", "\\1", x)
+  cat("Processing:", x, "\n")
+  # if(file.exists(paste0(x, ".Rmd"))) {
+  #   cat("\tRMD file found re-generating...\n")
+  #   #render(paste0(x, ".Rmd"), quiet = T)
+  # }
+  cat("\tChecking and removing old PDF..\n")
+  if(file.exists(paste0(x, ".pdf"))) file.remove(paste0(x, ".pdf"))
+  cat("\tGenerating new PDF...")
+  webshot(paste0(x, ".html"),
+          paste0(x, ".pdf"))
+  cat("done.\n")
+  return("OK")
+})
 
-# Combine PDFs using pdf tools
-pdf_combined(report_files,
-             output = "Assmann_et_al-DK_Forest_Quality_v0.1.0")
+# Combine to one report
+pdf_combine(report_files,
+             output = "docs/Assmann_et_al-DK_Forest_Quality_Report_v0.1.0.pdf")
+
+# Remove intermediate pdf files
+lapply(report_files, file.remove)
