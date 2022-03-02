@@ -43,3 +43,4 @@ pdf_combine(report_files,
 
 # Remove intermediate pdf files
 lapply(report_files, file.remove)
+file.remove("docs/index.html")
