@@ -1,0 +1,207 @@
+---
+title: "DK Forest LiDAR - Forest Annotations & Training Data"
+author: Jakob J. Assmann
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(sf)
+library(tidyverse)
+library(ggplot2)
+library(terra)
+library(rnaturalearth)
+```
+
+This document provides an overview of the forest annotations used for generating the 
+training dataset that forms the base of our forest quality models for Denmark. 
+
+These annotations are vector polygons of forests in Denmark that are of known 
+"high" or "low" quality. We used these polygons to generate a training dataset 
+of 200k pixels based on the 10 m grid of Denmark that is used by our models. 
+The grid is defined by the EcoDes-DK15 dataset. A brief description on how the
+final pixel training dataset was generated from the forest 
+annotations can be found at the end of this document. 
+
+Note: What makes a "high" or "low" quality forest is to some degree arbitrary. 
+Our definitions here are the result of a long discussion and have been developed over
+multiple years. The aim was to arrive at a workable definition that aligns 
+with the current framework of forest designations in Denmark, while also ensuring that 
+enough training data is available. We appreciate that our chosen definitions of 
+forest quality are a simplification and not without flaws (e.g., we assume that 
+all "plantations" are of low forest quality). 
+
+---
+
+## High quality forests
+
+Total number of high quality forest polygons: 9400.
+
+### §25 and §15 forest
+
+The core of the high quality forest annotations is made up by the polygons for 
+the designated §25 ("naturmaessigt saerlig vaerdifuld skov") and §15 ("skovnatur") forests. 
+The vector boundaries of these forests were retrieved from "Danmarks Miljøportal" (https://arealinformation.miljoeportal.dk/):
+
+- p25_offentligareal.shp (§25 forests, accessed on on 5 April 2019
+- skov_kortlaegning_2016_2018.shp (§15 forests, accessed 24 September 2019).
+
+Number of forests: 9044 (§25 forests: 2906; and §15 forests: 6138).
+
+### Untouched forests and "aftaler om natur"
+
+The two other components of the high quality forest annotations are vector 
+boundaries from the untouched forests (private and public), as well as areas 
+with agreements on nature ("aftaler om natur"). The vector boundaries of these
+areas were retrieved from "Miljøgis - Ansøgning om skovtilskud for private"  (https://miljoegis3.mim.dk/spatialmapsecure?profile=privatskovtilskud):
+
+- tilsagn17_st_uroert_skov_privat_tilskud.shp (untouched forests, accessed on 6 July 2021)
+- tilsagn18_st_uroert_skov.shp (untouched forests, accessed on 6 July 2021)
+- tilsagn19_st_uroert_skov_privat_tilskud.shp (untouched forests, accessed on 6 July 2021)
+- tilsagn20_st_uroert_skov_privat_tilskud.shp (untouched forests, accessed on 6 July 2021)
+- aftale_natur_tinglyst.shp (agreements on nature, accessed on 6 July 2021)
+
+Number of forests: 356 ("untouched": `r 15 + 20 + 37 + 46`; "aftaler om natur": 238).
+
+---
+
+## Low quality forests
+
+Total number of low quality forest polygons: 10697.
+
+### "Ikke" §25 forests
+
+These forests are forests that were considered for being designated as §25 forests,
+but did not meet the requirements (e.g., after completion of the field survey).
+The vector geometries for these forests were shared with us by Bjarne Aabrandt 
+Jensen (Miljøstyrelsen) in a personal communication on 19 November 2019.
+
+- ikkeP25_skov.shp (personal communication, 19 November 2019)
+
+Number of forests: 5848.
+
+### NST plantations 
+
+These forests are plantations owned by Denmark's environment agency "Naturstyrelsen" (NST).
+The vector geometries and auxiliary data for these forests were obtained by personal 
+communication from Bjørn Ole Ejlersen at NST to Pil Pedersen on 11 June 2020.
+
+The source dataset includes all forests owned by NST. To subset only forests 
+that are plantations, we filtered the data by excluding all forests that had 
+an "ANV 4" value of 1, were classified as "urørt" or designated as "historical". 
+We then sub-sampled the plantations to ensure a balanced training dataset between 
+high and low quality forests (target :~10k high & ~10k low quality forests). We drew a sample of 5000 plantations. To account for variation 
+within stand ages, we stratified the sample based on the following stand ages 
+classes (years): [0, 10], (10, 25], (25, 50], (50, 75], (75, ∞). For each stand 
+age we drew 1000 forests at random. Not all forests that were drawn in the sample
+had an associated polygon in the separate vector geometry file (n missing = 151), 
+these forests were not included in the final NST plantation subset.
+
+- NST  2019 08012019 ber 16012020 til bios_au.xlsx (NST forests data table)
+- LitraPolygoner_region.shp (NST forests polygons)
+
+Number of forests: 4849.
+
+---
+
+## Pixel training dataset 
+
+### Pixel sampling
+
+We used the forest annotations (9400 high quality forests and 10697 low
+quality forests) to generate a sample of 200k pixels based on the EcoDes-DK14 grid
+to train our forest quality models. 
+
+The EcoDes-DK15 dataset uses a version of the Danish national grid that divides 
+terrestrial Denmark into 10 m x 10 m cells / pixels (UTM32). 
+For the training dataset we drew a sample of 100k pixels each from within 
+the high quality and the low quality forest polygons. Specifically, the sample 
+was based on the EcoDes-DK15 "dtm10_m" descriptor raster). The sample was drawn 
+completely at random.
+
+``` {r training_data_map, echo = FALSE, cache = TRUE}
+# Load pixel sample
+load("../data/training_data/pixel_training.Rda")
+
+# Get Denmark boundaries
+denmark <- ne_countries(scale = "large", 
+                        country = "denmark",
+                        returnclass = "sf") %>%
+  st_transform(st_crs(pixel_training_data))
+
+# Plot training data
+ggplot() +
+  geom_sf(data = denmark, fill = "NA", colour = "black") +
+  geom_sf(data = pixel_training_data, 
+          mapping = aes(colour = forest_value),
+          size = 0.01) +
+  labs(title = "Pixel sample for training") +
+  coord_sf(datum = st_crs(pixel_training_data)) +
+  theme_void()
+```
+
+Note, that because of the sampling scheme multiple pixels will be drawn from the 
+individual forest polygons and the sampled pixels are therefore to some degree 
+not statistically independent (as would samples from neighbouring polygons). However, the aim 
+of our project is not to carry out a statistical analysis, but to train a 
+machine learning classifier for predicting forest quality. The reduction in 
+independence of the samples is therefore not an issue, as long as it does not lead
+to over fitting of the models (which it did not). Instead sub-sampling of the 
+forest polygons is actually desirable as it allows us to capture the variation 
+within the forest polygons themselves and therefore increase the predictive 
+capabilities of our models. We also include focal (window) predictors variables 
+to account for within landscape-scale (100 m x 100 m) variation in our models. 
+
+Finally, we chose a sample size of 200k pixels as a compromise between available
+computing power and model performance. There are approximately 56.3 million forest 
+pixels in Denmark and the training sample therefore represents ~0.36% of the 
+total forest area in the country. 
+
+### Training / validation split (geographic stratifiaction)
+
+To allow for an independent validation of the model performance, we split the
+data 80/20 (training / validation) before carrying out the training. To account for potential
+geographical covariation in the training data we used a geographic 
+stratification when carrying out the split. This means that the split was not 
+conducted at random on the whole dataset, but randomly within regions
+(80/20 in each region). We used two different stratification schema of Denmark (see below). 
+
+#### Biowide stratification
+
+This stratification was developed for the BIOWIDE project (Brunbjerg et al. 2019).
+The geometries are not publicly available and were kindly shared with us by 
+Ane Brunbjerg (personal communication on 1 September 2021). Some further clean 
+up of the geometries was required on our end. We had to make sure the boundaries of 
+geometries were flush among neighbouring regions and that the coastlines were buffered. 
+
+The stratification divides Denmark into six regions. 
+
+``` {r biowide_regions, echo = FALSE, cache = TRUE}
+biowide_regions <- read_sf("../data/stratification/biowide_georegions/biowide_zones.shp")
+ggplot() +
+  geom_sf(data = biowide_regions, aes(fill = region))
+```
+
+### Derek's stratification
+
+The second stratification was developed by co-author Derek Corcoran based on 
+climatic and other ecological covariates. 
+
+It divides Denmark into three regions. 
+
+```{r dereks_stratificaton, echo = FALSE, cache = TRUE}
+dereks_strat <- rast("../data/stratification/derek_stratification/Results_2clim_5soil.tif") %>% as.polygons() %>% st_as_sf(crs = 25832) %>% mutate(region = factor(paste0("Region", Temp)))
+ggplot() +
+  geom_sf(data = dereks_strat, aes(fill = region))
+```
+
+## References
+
+- Brunbjerg, A. K., Bruun, H. H., Brøndum, L., Classen, A. T., Dalby, L., Fog, K., Frøslev, T. G., Goldberg, I., Hansen, A. J., Hansen, M. D. D., Høye, T. T., Illum, A. A., Læssøe, T., Newman, G. S., Skipper, L., Søchting, U., & Ejrnæs, R. (2019). A systematic survey of regional multi-taxon biodiversity: Evaluating strategies and coverage. BMC Ecology, 19(1), 43. https://doi.org/10.1186/s12898-019-0260-x
+
+
+
+
+
+
