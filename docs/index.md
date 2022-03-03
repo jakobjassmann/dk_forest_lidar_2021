@@ -4,7 +4,7 @@ Classifications of Denmark's forest quality using the [EcoDes-DK15 dataset](http
 **Disclaimer: This project is under development and not yet peer-reviewed.**
 
 ### Project overview
-- [Workflow Overview](workflow_overview.html)
+- [Workflow Overview](workflow.html)
 
 ### Data description
 - [Forest annotations and training data](training_annotations.html)
