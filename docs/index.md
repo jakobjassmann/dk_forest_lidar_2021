@@ -1,4 +1,4 @@
-# DK Forest LiDAR v.0.1.0 (beta)
+# DK Forest LiDAR v0.1.0 (beta)
 Classifications of Denmark's forest quality using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar) and other spatial data.
 
 **Disclaimer: This project is under development and not yet peer-reviewed.**
