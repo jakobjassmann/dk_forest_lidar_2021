@@ -10,6 +10,8 @@ library(pdftools)
 # Set base names and order of files to include
 report_files <- paste0("docs/",
                         c("index.pdf",
+                          "workflow.pdf",
+                          "training_annotations.pdf",
                           "data_overview.pdf",
                           "focal_var_selection.pdf",
                           "gbm_models_performance.pdf",
