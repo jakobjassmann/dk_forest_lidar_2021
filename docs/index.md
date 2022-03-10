@@ -26,6 +26,8 @@ Classifications of Denmark's forest quality using the [EcoDes-DK15 dataset](http
 - [Disturbance map v0.1.0 (36 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.1.0.tif)
 - [Training Polygons (44.3 MB, GeoJson)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/training_polygons.geojson)
 
+## Auxiliary
+- [Guide on how to visualise cloud optimised rasters](cog_guide.html)
 ---
 <img src='au_logo.png' style='width: 250; height:50px;'><img src='sustainscapes_logo.png' style='width: 240; height:60px;'>
 
