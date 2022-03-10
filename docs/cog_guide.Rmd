@@ -1,0 +1,361 @@
+---
+title: "Visualising large rasters with Leaflet - a quick guide"
+author: "Jakob J. Assmann"
+contact: j.assmann@bio.au.dk
+date: "10/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(stars)
+library(sf)
+library(terra)
+library(leaflet)
+```
+
+### Overview
+
+This is a quick guide on how to visualise a cloud optimised GeoTiff using a Leaflet.
+
+Workflow overview:
+
+1. [Generate a cloud otimised geotiff.](#generate-a-cloud-otimised-geotiff)
+2. [Host the raster on the cloud.](#host-the-raster-on-the-cloud)
+3. [Add the raster to a Leaflet.](#add-the-raster-to-a-leaflet) 
+
+There are various ways of how each step can be achieved. The guide below sums up what worked best for me. 
+
+I got my inital inspiration from Sean Rennie's [post on medium](https://sean-rennie.medium.com/cogs-in-production-e9a42c7f54e4). 
+
+### 1) Generate a cloud otimised geotiff
+
+Hosting ridiculously large raster has become a lot easier since the introduciton 
+of cloud optimised GeoTiffs (often abbreviated to COGs). 
+To learn more about COGs see [cogeo.org](https://www.cogeo.org/). 
+A relatively mature driver is already implemented in [GDAL](https://gdal.org/drivers/raster/cog.html), 
+which we will use here to generate a COG from our raster. 
+
+The advantage of COGs is that they directly integrate a pyramid of overview tiles into the 
+GeoTiff file (no sidecar files needed) and that they allow for HTTP GET request to access 
+only those tiles that are needed for displaying / working with the raster at a certain scale. 
+Overall, this allows for fast and efficient visualisation of the raster
+while not obscuring direct access to the raw raster values. 
+
+#### Generating the COG
+
+There are multiple routes to generate a COG with GDAL. File compression and tiling can be
+added to a GeoTiff in a stepwise manner using `gdal_warp` and `gdal_addo`, but 
+I found that the following one-step conversion with `gdal_warp` worked best for me:
+
+```
+gdal_warp -of COG -co RESAMPLING=NEAREST -co TILING_SCHEME=GoogleMapsCompatible 
+  -co COMPRESS=DEFLATE -co NUM_THREADS=46 source_file.tif out_file.tif
+```
+
+Here, I am using a nearest neighbour resampling algorithm (option 
+`RESAMPLING`) and 46 parallel threads (option `NUM_THREADS`). Just adapt these 
+parameters according to the data type / computing resources available to you.
+
+The `DEFLATE` compression provided great results for me and seems to be handled
+efficiently by the georaster layer for Leaflet. While some other guides suggest
+adding tiles manually, I found that using the `GoogleMapsCompatible` tiling scheme
+provided the best results and fastest response, the GDAL driver also automatically 
+seems to project the raster into EPSG 3857 (web mercartor) when using this option. 
+
+More detail on the driver options can be found in the GDAL documentation linked 
+above.
+
+If the raster needs to be generated from within R, I suggest using `gdal_utils` 
+from the `sf` package. I often use the gdal binaries shipped with `sf`,
+as accessing them is easy and I generally have the package loaded when 
+working with spatial data in R. 
+
+The sf::gdal_utils call for the above GDAL command would look as follows:
+
+```{r eval = FALSE}
+gdal_utils("warp",
+           source = "source_file.tif",
+           destination = "out_file_cog.tif",
+           options = c(
+             "-of", "COG",
+             "-co", "RESAMPLING=NEAREST",
+             "-co", "TILING_SCHEME=GoogleMapsCompatible",
+             "-co", "COMPRESS=DEFLATE",
+             "-co", "NUM_THREADS=46"
+           ))
+```
+
+#### Let's try it out! 
+
+First we generate a random binary raster (values 1 or 2) that spans Denmark in the projected CRS "UTM 32N":
+
+```{r, eval = FALSE}
+library(terra)
+library(sf)
+library(rnaturalearth)
+# Retrieve a polygon of Denmark via rnaturalearth and project to UTM 32N
+denmark <- ne_countries(scale = "medium", 
+                        country = "denmark",
+                        returnclass = "sf") %>%
+  st_transform(25832)
+# Retrieve extent, add a buffer and adjust to allow for clean divison by 100 m 
+extent_dk <- (st_bbox(denmark) - (st_bbox(denmark) %% 100) + 100) %>%
+  .[c("xmin", "xmax", "ymin", "ymax")] %>%
+  as.numeric() %>%
+  ext()
+# Generate a random 100 m res raster (1s and 2s), mask out everything outside DK
+random_rast_dk <- rast(nrows = (extent_dk[4] - extent_dk[3]) / 100,
+                       ncol = (extent_dk[2] - extent_dk[1]) / 100,
+                       extent = extent_dk,
+                       crs = "EPSG:25832")
+values(random_rast_dk) <- rbinom(ncell(random_rast_dk), 1, 0.75) + 1
+random_rast_dk <- mask(random_rast_dk, vect(denmark))
+# Save as an ordinary tiff file
+writeRaster(random_rast_dk, "random_rast_dk.tif")
+```
+
+Now we convert the raster (3.1 Mb) to a compressed COG in EPSG 3857 using `gdal_utils()`:
+
+```{r eval = FALSE}
+gdal_utils("warp",
+           source = "random_rast_dk.tif",
+           destination = "random_rast_dk_cog_epsg_3857.tif",
+           options = c(
+             "-of", "COG",
+             "-co", "RESAMPLING=NEAREST",
+             "-co", "TILING_SCHEME=GoogleMapsCompatible",
+             "-co", "COMPRESS=DEFLATE",
+             "-co", "NUM_THREADS=6"
+           ))
+```
+
+Note how the resulting COG has a reduced file size (2.5 MB). For bigger rasters
+the compression can be even more notable (I had ~6GB rasters reduced to ~40 MB). 
+Next we look at how to host the COG properly on the cloud. 
+
+### 2) Host the raster on the cloud
+
+This step was the one that took me the longest to figure out. I only dabble in 
+webhosting and it was a steep learning curve. 
+
+The biggest issue
+was that the georaster for leaflet plugin (see below) needs the hosting service 
+to allow for Cross Origin Resource Sharing (CORS). Both AWS and Google Cloud 
+block CORS by default. While this is a reasonable measure, for making the COG
+to work with leaflet CORS needs to be enabled for the file. 
+
+Here I provide a quick run through on how a COG can be hosted using an AWS S3 bucket. 
+The steps required for the Google Cloud should be similar, I suggest you consult 
+the Google Cloud documentation if you would like to use Google Cloud instead. 
+
+In the following section, I assume that you have already fully [set up an AWS account with S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/setting-up-s3.html) and 
+that you are familiar with the [basics of S3 file storage](https://docs.aws.amazon.com/AmazonS3/latest/userguide/GetStartedWithS3.html).
+
+All steps can be carried out in the [AWS S3 web console](https://s3.console.aws.amazon.com/). 
+
+1. Create a new bucket (or modify an old one with now sensitive data).
+2. Go to "Permissions" and change the "Block public access" settings for the bucket so that they allow for "public access through access control lists (ACLs)". You can also set this during bucket creation. 
+3. Still in the "Permissions" tab for the bucket, scroll down to "Cross-origin resource sharing (CORS)".
+4. Click "Edit" and paste the following JSON into the text field:
+```
+[
+    {
+        "AllowedHeaders": [
+            "*"
+        ],
+        "AllowedMethods": [
+            "GET",
+            "HEAD"
+        ],
+        "AllowedOrigins": [
+            "*"
+        ],
+        "ExposeHeaders": []
+    }
+]
+```
+5. Save the changes. 
+
+**Note: The above JSON allows for all "GET" and "HEAD" CORS requests to access all 
+[header types provided by S3](https://docs.aws.amazon.com/AmazonS3/latest/API/RESTCommonRequestHeaders.html) independent of their origin ("\*"). To learn more about the AWS CORS configuration see the 
+[AWS docs help page on CORS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html). 
+It might be worthwhile reading into the documentation if you would like to 
+tighten up the security of your bucket a bit more. For the purposes of hosting my GeoTiffs, these
+settings were safe enough for me, while at the same time allowing the leaflet 
+to work nicely.**
+
+6. Upload the COG to the bucket (e.g., the above generated "random_rast_dk_cog_epsg_3857.tif"). 
+7. In the file's "permission" tab, set the ACL permission to "Read" for the group "Everyone (public access)".
+
+We are now ready to access the COG on S3 using Leaflet. Before you 
+leave the S3 web console don't forget to copy the AWS S3 URL to the raster  
+into your clipboard and store it somewhere for later use. 
+(e.g. "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/random_rast_dk_cog_epsg_3857.tif")
+
+### 3) Add the raster to a Leaflet 
+
+The final step is to add the COG hosted on S3 to a Leaflet. The functionality of
+adding a COG to a Leaflet is provided by the JS plugin [georaster-layer-for-leaflet](https://github.com/GeoTIFF/georaster-layer-for-leaflet) 
+by Daniel Dufour. I highly recommend to check out the documentation and the [examples](https://geotiff.github.io/georaster-layer-for-leaflet-example/). 
+The latter provide some inspiration on the variety of ways on how the plugin can be used. 
+The examples are also very helpful for understanding how colour mapping and 
+spectral index calculations can be realised using the plugin.
+
+For the dk_forest_lidar project, I wrote a JS script / website that generates a 
+[realtively complex Leaflet web app](https://jakobjassmann.github.io/dk_forest_lidar_2021/data_vis.html).
+You can check out the [source code here](https://github.com/jakobjassmann/dk_forest_lidar_2021/blob/main/docs/data_vis.html).
+The functionality of the web app exceeds what is needed for the purpose of this guide. I will keep it more simple here. 
+
+***Note: The [leafem R package](https://github.com/r-spatial/leafem) is currently
+developing support for the Geotiff API - see [Issue 29](https://github.com/r-spatial/leafem/issues/29). The current implementation is still iffy and I can't get it to work reliably with COGs. 
+Therefore I am directly adding HTML and JS code to the R markdown file here instead
+of using the leaflet package for R.***
+
+We start by loading all the Java Script dependencies for leaflet, georaster and
+the geo-raster-for-leavlet plugin. The code boxexs below show the code that has 
+been added to the raw text of this section. Check out the [source file](https://github.com/jakobjassmann/dk_forest_lidar_2021/blob/main/docs/cog_guide.Rmd) for this 
+document if you are not clear on what this means. 
+
+```{HTML}
+<!--- Leaflet CSS stylesheet (needs to be loaded before leaflet js) --->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+
+<!--- Leaflet js --->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+<!--- Georaster js --->    
+<script src="https://unpkg.com/georaster"></script>
+
+<!--- Georaster-Layer-For-leaflet js --->      
+<script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+```
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+<script src="https://unpkg.com/georaster"></script>
+
+<script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+
+To make the leaflet work fully in this RMarkdown file, I then load an 
+empty leaflet. This adds the CSS style sheets from the leaflet package to the 
+headers of the generated HTML and ensures that any leaflets we add are displayed
+as expected. 
+
+```{r, warning = FALSE}
+library(leaflet)
+leaflet(width = 0, height = 0)
+```
+Next we add a div element for the actual map. 
+```{HTML}
+<div id = "map" style="width: 100%; height: 480px; position: relative;"></div>
+```
+
+The map will appear here:
+
+<div id = "map" style="width: 100%; height: 480px; position: relative;"></div>
+<br>
+Finally, we add a plain text JS section to generate the leaflet and load the 
+raster stored on the S3 bucket:
+
+```{HTML}
+<script>
+  // Load base tiles ----
+
+  // OpenStreetMap Tiles
+  var OpenStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  });
+
+  // Initiate leaflet ----
+  // This needs to be done before loading the Georasters
+  var map = L.map('map', { 
+      center: [56.25, 12], // Centered on Denmark
+      zoom: 7, // Worked well
+      layers: [OpenStreetMap] // Default layers
+  });
+
+  // Set URL to cog
+  var random_rast_dk_url = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/random_rast_dk_cog_epsg_3857.tif"
+
+  //  Load georaster layer and add to map
+  var random_rast_dk_url = parseGeoraster(random_rast_dk_url).then(georaster => {
+      var random_rast_dk = new GeoRasterLayer({
+          georaster,
+          opacity: 0.75,
+          resolution: 128, // 128 seems to be a good compromise
+          pixelValuesToColorFn: function(pixelValues){
+              var pixelValue = pixelValues[0]; 
+              if (pixelValue >= 1 && pixelValue <= 2){
+                  var colour = (pixelValue == 1 ? "Purple": "DarkGreen"); 
+                  return colour;
+              } else {
+                  return undefined;
+              }   
+          }
+      });       
+      random_rast_dk.addTo(map);
+  });
+
+</script>
+```
+
+<script>
+  // Load base tiles ----
+
+  // OpenStreetMap Tiles
+  var OpenStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  });
+
+  // Initiate leaflet ----
+  // This needs to be done before loading the Georasters
+  var map = L.map('map', { 
+      center: [56.25, 12], // Centered on Denmark
+      zoom: 7, // Worked well
+      layers: [OpenStreetMap] // Default layers
+  });
+
+  // Set URL to cog
+  var random_rast_dk_url = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/random_rast_dk_cog_epsg_3857.tif"
+
+  //  Load georaster layer and add to map
+  parseGeoraster(random_rast_dk_url).then(georaster => {
+      var random_rast_dk = new GeoRasterLayer({
+          georaster,
+          opacity: 0.75,
+          resolution: 128, // 128 seems to be a good compromise
+          pixelValuesToColorFn: function(pixelValues){
+              var pixelValue = pixelValues[0]; 
+              if (pixelValue >= 1 && pixelValue <= 2){
+                  var colour = (pixelValue == 1 ? "Purple": "DarkGreen"); 
+                  return colour;
+              } else {
+                  return undefined;
+              }   
+          }
+      });       
+      random_rast_dk.addTo(map);
+  });
+
+</script>
+
+For access to the raster (e.g., to do some calculation in a Shiny app), you can 
+load the raster remotely as a proxy using stars:
+
+```{r warnings = FALSE, messages = FALSE}
+library(stars)
+# Load remote raster
+random_rast <- read_stars("https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/random_rast_dk_cog_epsg_3857.tif",
+                          proxy = T,
+                          quite = T)
+# Extract a point
+st_sfc(st_point(c(12, 56.25)), crs = 4326) %>%
+  st_transform(st_crs(random_rast)) %>%
+  st_extract(random_rast, .,
+             quite = T) %>%
+  st_as_sf()
+```
+
