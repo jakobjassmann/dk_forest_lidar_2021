@@ -28,6 +28,7 @@ Classifications of Denmark's forest quality using the [EcoDes-DK15 dataset](http
 
 ## Auxiliary
 - [Guide on how to visualise cloud optimised rasters](cog_guide.html)
+
 ---
 <img src='au_logo.png' style='width: 250; height:50px;'><img src='sustainscapes_logo.png' style='width: 240; height:60px;'>
 
