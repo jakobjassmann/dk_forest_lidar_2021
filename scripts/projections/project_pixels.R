@@ -70,14 +70,14 @@ project_tile <- function(tile_id,
     setNames(gsub(".*/(.*)\\..*", "\\1", pred_files)) %>%
     c(tile_stack, .)
   
-  # Mask water from stack
-  inland_mask_rast <- rast(paste0(inland_mask, "/inland_water_mask_", tile_id, ".tif"))
-  if(ext(tile_stack) != ext(inland_mask_rast)) inland_mask_rast <- crop(inland_mask_rast, tile_bounds)
-  tile_stack <- mask(tile_stack, inland_mask_rast)
-  
-  sea_mask_rast <- rast(paste0(sea_mask, "/sea_mask_", tile_id, ".tif"))
-  if(ext(tile_stack) != ext(sea_mask_rast)) sea_mask_rast <- crop(sea_mask_rast, tile_bounds)
-  tile_stack <- mask(tile_stack, sea_mask_rast)
+  # # Mask water from stack
+  # inland_mask_rast <- rast(paste0(inland_mask, "/inland_water_mask_", tile_id, ".tif"))
+  # if(ext(tile_stack) != ext(inland_mask_rast)) inland_mask_rast <- crop(inland_mask_rast, tile_bounds)
+  # tile_stack <- mask(tile_stack, inland_mask_rast)
+  # 
+  # sea_mask_rast <- rast(paste0(sea_mask, "/sea_mask_", tile_id, ".tif"))
+  # if(ext(tile_stack) != ext(sea_mask_rast)) sea_mask_rast <- crop(sea_mask_rast, tile_bounds)
+  # tile_stack <- mask(tile_stack, sea_mask_rast)
   
   # Mask non forest from raster
   forest_mask <- rast(forest_mask_file)
