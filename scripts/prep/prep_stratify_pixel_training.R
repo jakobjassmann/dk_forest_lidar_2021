@@ -13,8 +13,6 @@ load("data/training_data/pixel_training.Rda")
 # Filter out masked data and na values   
 pixel_training_data <- pixel_training_data %>% 
   st_drop_geometry() %>%
-  filter(!is.na(inland_water_mask)) %>%
-  filter(!is.na(sea_mask)) %>%
   select(-contains("mask")) %>%
   select(-contains("250")) %>%
   select(-contains("mean_110")) %>%
