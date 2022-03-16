@@ -2,7 +2,7 @@
 
 **Summary reports, data visualisations and downlads can be found on:**<br> https://jakobjassmann.github.io/dk_forest_lidar_2021/
 
-Last update: March 2022.<br>
+Last update: 16 March 2022.<br>
 
 Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Signe Normand 
 
