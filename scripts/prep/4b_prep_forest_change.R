@@ -8,21 +8,24 @@ library(raster)
 library(rgdal)
 
 # Load forest change_raster
-disturbance_year <- rast("data/forest_change_cs/disturbance_year_denmark.tif")
+disturbance_year <- rast("data/forest_change_cs/disturbance_year_1986-2020_denmark.tif")
 
 # Determine change since 2015
 disturbance_since_2015 <- disturbance_year > 2015
 
-# Load projections raster as maks
+# Load projections raster as template
 gbm_biowide <- rast("data/projections/gbm_biowide/forest_quality_gbm_biowide.vrt")
 
 # Project change raster
 disturbance_since_2015 <- terra::project(disturbance_since_2015, 
-                                  gbm_biowide,
-                                  method = "near")
+                                         gbm_biowide,
+                                         method = "near")
+
+# Load forest mask
+forest_mask <- rast("data/basemap_forests/forest_mask.tif")
 
 # Mask out non-forests
-disturbance_since_2015 <- mask(disturbance_since_2015, gbm_biowide)
+disturbance_since_2015 <- mask(disturbance_since_2015, forest_mask)
 
 # Write to file
 writeRaster(disturbance_since_2015, 
