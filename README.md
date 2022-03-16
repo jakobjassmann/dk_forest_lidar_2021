@@ -1,4 +1,4 @@
-# Denmark Forest Quality Projections Code Repository
+# Denmark forest quality projections - code repository
 
 **Summary reports, data visualisations and downlads can be found on:** https://jakobjassmann.github.io/dk_forest_lidar_2021/
 
@@ -6,7 +6,7 @@ Last update: March 2022.<br>
 
 Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Signe Normand 
 
-Code repository accompanying Assmann et al. (in prep) "Airborne laser scanning data fusion and machine learning identify forests of high conservation value in Denmark".
+Code repository accompanying Assmann et al. (in prep) "*Airborne laser scanning data fusion and machine learning identify forests of high conservation value in Denmark*".
 
 ## Content
 
@@ -49,18 +49,36 @@ scripts/                                - Scripts for data prep, model fitting, 
 
 ## 2. Required source data
 
+The datasets listed below are required to regenerate the full analysis and carry out the forest quality projections across Denmark.
+
+*Note: The annotation polygons (high / low quality forests) and the extracted predictor values for the random sample of pixel locations within these polygons are included as compressed R data files in this repository. These files are located in `/data/training_data` and allow for the replication of the model fitting and accuracy assessments without the need to aquire the data listed below.* 
+
+**Forest annotations**
+- p15 and p225 polygons: https://arealinformation.miljoeportal.dk/
+- untouched forests and "aftaler om natur": https://miljoegis3.mim.dk/spatialmapsecure?profile=privatskovtilskud
+- "ikke_p25" forests, personal communictation Bjarne Aabrandt Jensen (Miljøstyrelsen, DK). 
+- NST plantations, personal commumications Bjørn Ole Ejlersen (Naturstyrelsen, DK).
+
+**EcoDes-DK15 v1.1.0** - Assmann et al. 2022: https://doi.org/10.5194/essd-14-823-2022
+
+**Tree type raster** - Bjerreskov et al. 2021: https://www.mdpi.com/2072-4292/13/5/950 (personal communication: Thomas Nord-Larsen)
+
+**Clay, sand and soil organic carbond content for Denmark from SoilGrids 2.0** - Poggio et al. 2021: https://doi.org/10.5194/soil-7-217-2021
+
+**Near surface ground water (summer)** - Koch et al. 2021: https://doi.org/10.3389/frwa.2021.701726
+
 [\[back to content\]](#content)
 
 ## 3. Analysis workflow
 
 A conceptual overview of the workflow can be found [here](https://jakobjassmann.github.io/dk_forest_lidar_2021/workflow.html).<br><br>
-The following steps describe the scripts contained in this reporsiory and the order in wich they need to be run.
+The following steps describe the scripts contained in this repository and the order in which they need to be run.
 
 *Note: All random numbers are generated as pseudo-random numbers using a seed to ensure reproducibility of the analysis.*
 
 **Data preparation**
 
-After download (see [Section 2.](#2-required-source-data) above), the polygon annotations, predictor data and forests masks need to be perpared as follows. 
+After download (see [Section 2](#2-required-source-data) above), the polygon annotations, predictor data and forests masks need to be perpared as follows. 
 <br><br>
 All scripts are found in `scripts/prep`.
 
