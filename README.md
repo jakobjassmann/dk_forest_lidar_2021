@@ -1,6 +1,6 @@
 # Denmark forest quality projections - code repository
 
-**Summary reports, data visualisations and downlads can be found on:** https://jakobjassmann.github.io/dk_forest_lidar_2021/
+**Summary reports, data visualisations and downlads can be found on:**<br> https://jakobjassmann.github.io/dk_forest_lidar_2021/
 
 Last update: March 2022.<br>
 
