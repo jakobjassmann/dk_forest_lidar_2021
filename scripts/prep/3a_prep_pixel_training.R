@@ -27,12 +27,27 @@ high_quality <- list.files("data/response_data/high_quality_forests/",
                            ".shp", 
                            recursive = T,
                            full.names = T) %>%
-  map(read_sf) %>%
-  map(function(x){
-    if(sum("tilskudsor" %in% names(x)) > 0) x <- filter(x, tilskudsor == "Privat urørt skov")
-    select(x, !everything())
+  # Load files and assign source column
+  map(function(shp_file){
+    polygons <- read_sf(shp_file)
+    # Filter old growth forests if needed
+    if(sum("tilskudsor" %in% names(polygons)) > 0){
+      polygons <- filter(polygons, tilskudsor == "Privat urørt skov")
+    }
+    polygons <- select(polygons, !everything())
+    polygons$polygon_source <- gsub(".*/(.*)\\.shp", "\\1", shp_file)
+    return(polygons)
     }) %>%
-  bind_rows() 
+  bind_rows() %>%
+  mutate(polygon_source = case_when(
+    polygon_source == "skov_kortlaegning_2016_2018" ~ "p15",
+    polygon_source == "p25_offentligareal" ~ "p25",
+    polygon_source == "aftale_natur_tinglyst" ~ "aftaler_om_natur",
+    polygon_source == "tilsagn17_st_uroert_skov_privat_tilskud" ~ "private_old_growth",
+    polygon_source == "tilsagn18_st_uroert_skov" ~ "private_old_growth",
+    polygon_source == "tilsagn19_st_uroert_skov_privat_tilskud" ~ "private_old_growth",
+    polygon_source == "tilsagn20_st_uroert_skov_privat_tilskud" ~ "private_old_growth",
+  ))
 
 ## Load and prep geometries for low quality forests
 # Plantations geometries and meta data
@@ -61,10 +76,15 @@ plantations_meta <- plantations_meta %>%
 # Filter geometries
 plantations <- plantations %>%
   filter(UNIKID %in% plantations_meta$Ident)
+# Set source column
+plantations$polygon_source <- "NST_plantations"
+
 # Add ikke p25 geometries
-low_quality <- read_sf("data/response_data/low_quality_forests/ikke_p25/ikkeP25_skov.shp") %>%
-  list(., plantations) %>%
-  map(function(x) select(x, !everything())) %>%
+low_quality <- read_sf("data/response_data/low_quality_forests/ikke_p25/ikkeP25_skov.shp") 
+low_quality$polygon_source <- "ikke_p25"
+low_quality <- list(low_quality, 
+                    plantations) %>%
+  map(function(x) select(x, polygon_source)) %>%
   bind_rows() 
 
 # Save / load geometries
@@ -84,6 +104,16 @@ low_quality_sample_coords <- st_sample(low_quality, 100000) %>%
   st_sf() %>%
   mutate(forest_value = "low") %>% 
   mutate(sample_id = paste0(forest_value, "_", 1:n()))
+
+# Add polygon source
+high_quality_sample_coords$polygon_source <- st_intersects(
+  high_quality_sample_coords,
+  high_quality) %>%
+  sapply(function(x) high_quality$polygon_source[x[1]])
+low_quality_sample_coords$polygon_source <- st_intersects(
+  low_quality_sample_coords,
+  low_quality) %>%
+  sapply(function(x) low_quality$polygon_source[x[1]])
 
 # Save / load
 save(high_quality_sample_coords, file = "data/training_data/pixel_geometries/high_quality_pixel_sample.Rda")
@@ -140,8 +170,8 @@ extract_fun <- function(vrt_file){
   
   # Prepare extracted values for return as data.frame
   extractions <- data.frame(
-    sample_id = combined_sample_coords$sampl_d,
-    forest_value = combined_sample_coords$frst_vl,
+    sample_id = combined_sample_coords$sample_id,
+    forest_value = combined_sample_coords$forest_value ,
     cell_values = cell_values)
   
   # Update colum column name with name of vrt files
@@ -345,6 +375,7 @@ pixel_training_data <- st_as_sf(pixel_training_data_raw)
 pixel_training_data <- relocate(pixel_training_data, 
                                 forest_value,
                                 sample_id,
+                                polygon_source, 
                                 biowide_region,
                                 dereks_stratification)
 save(pixel_training_data, file = "data/training_data/pixel_training.Rda")
