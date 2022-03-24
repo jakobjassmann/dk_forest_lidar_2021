@@ -1,163 +1,299 @@
-# Figure 2 for the DK Forest LiDAR manuscript
-# Jakob J. Assmann j.assmann@bio.au.dk 16 March 2022
+# Script for DK Forest LiDAR Figure 2
+# Jakob J. Assmann j.assmann@bio.au.dk 23 March 2022
 
-# Dependencies
-library(tidyverse)
-library(ggplot)
+# Dependencies 
+
 library(terra)
-library(patchwork)
-library(rasterVis)
-library(rnaturalearth)
+library(sf)
+library(caret)
+library(tidyverse)
+library(ggplot2)
+library(ggtext)
 library(cowplot)
+library(ggnewscale)
 
-# define patchwork plot layout
-plot_layout <- "
-AAAB
-AAAC
-AAAD
-EFGH
-"
+# Set colours
+high_quality_col <- "#3CB0AE"
+low_quality_col <- "#DBA318"
 
-high_quality_col <- "#38AAB5"
-low_quality_col <- "#A64304"
+# Load pixel sample
+load("data/training_data/pixel_training.Rda")
 
-# Generate map of high quality forests (panel A)
+# Get Denmark boundaries
+denmark <- read_sf("data/stratification/biowide_georegions/DK/DK.shp")
 
-# Forest projections
-forest_quality <- rast("data/projections/ranger_biowide/forest_quality_ranger_biowide_100m_downsampled.tif")
-# DK boundaries
-denmark <- read_sf("data/stratification/biowide_georegions/DK/DK.shp") %>%
-  st_transform(crs(forest_quality))
+# Load biowide regions 
+biowide_regions <- read_sf("data/stratification/biowide_georegions/biowide_zones.shp")
 
-gplot(forest_quality, maxpixels = 100000) +
-  geom_sf(data = denmark, inherit.aes = F, fill = NA, alpha = 0.5, size = 0.01) +
-  geom_tile(aes(fill = value)) +
-  scale_fill_gradient(low = high_quality_col, high = low_quality_col,
-                      na.value = NA)+
+# Load validation data
+load("data/training_data/pixel_valid_biowide.Rda")
+
+# Load training data
+load("data/training_data/pixel_training_biowide.Rda")
+
+# Load best model
+load("data/models/final_ranger_model_pixel_biowide.Rda")
+rf_biowide <- rf_fit
+rm(rf_fit)
+
+# Calculate performances based on  validation data
+performance_overall <- predict(rf_biowide, 
+                                       newdata = pixel_valid_biowide) %>%
+  confusionMatrix(data = ., 
+                  pixel_valid_biowide$forest_value)
+
+performance_list <- pixel_valid_biowide %>% 
+  ungroup() %>%
+  split(., .$biowide_region) %>%
+  lapply(function(test_data_region){
+    test_preds_region <- predict(rf_biowide, newdata = test_data_region)
+    #cat(unique(test_data_region$biowide_region), "\n")
+    confusionMat <- confusionMatrix(data = test_preds_region, test_data_region$forest_value)
+    #print(confusionMat)
+    return(confusionMat)
+  }) 
+
+
+# Extract statistics from performance_list
+row_order <- sapply(biowide_regions$region, function (x) which(x == names(performance_list)))
+biowide_regions$accuracy <- sapply(performance_list, 
+                                   function(x) round(x$overall["Accuracy"],2))[row_order]
+biowide_regions$sens <- sapply(performance_list, 
+                               function(x) round(x$byClass["Sensitivity"],2))[row_order]
+biowide_regions$useracc <- sapply(performance_list, 
+                                  function(x) round(x$byClass["Pos Pred Value"],2))[row_order]
+
+biowide_regions <- mutate(
+  biowide_regions,
+  x_cen = st_coordinates(st_centroid(biowide_regions))[,1],
+  y_cen = st_coordinates(st_centroid(biowide_regions))[,2],
+  map_span_x = st_bbox(biowide_regions)["xmax"]- 
+    st_bbox(biowide_regions)["xmin"],
+  map_span_y = st_bbox(biowide_regions)["ymax"]- 
+    st_bbox(biowide_regions)["ymin"]) 
+
+biowide_regions <- 
+  mutate(biowide_regions,
+         x = x_cen + map_span_x * c(-0.10,  # Nordjlland
+                                    -0.15,  # Vestjylland
+                                    0.30,  # Oestjylland
+                                    0.25,  # Sjaelland
+                                    -0.00,  # Bornholm
+                                    -0.20), # Fune_Lolland
+         
+         y = y_cen + map_span_y * c( 0.10,  # Nordjlland
+                                     0.10,  # Vestjylland
+                                     0.30,  # Oestjylland
+                                     0.00,  # Sjaelland
+                                     -0.10,  # Bornholm
+                                     -0.20), # Fune_Lolland
+         hjust = c(1, # Nordjlland
+                   1, # Vestjylland
+                   0, # Oestjylland
+                   0, # Sjaelland
+                   0, # Bornholm
+                   0),# Fune_Lolland
+         vjust = c(0, # Nordjlland
+                   1, # Vestjylland
+                   0, # Oestjylland
+                   0, # Sjaelland
+                   1, # Bornholm
+                   1) # Fune_Lolland
+  )
+
+biowide_regions$region[6] <- "Fune-Lolland"
+
+biowide_regions <- mutate(
+  biowide_regions,
+  label = paste0("<span style='font-size:16pt'>",
+                 "**", region, "**",
+                 "</span>",
+                 "<span style='font-size:10pt; color:black'>",
+                 "<br>Accuracy: ", accuracy,
+                 "<br>Sensitivity: ", sens,
+                 "<br>User Accuracy: ", useracc,
+                 "</span>"))
+
+# Build forest type panels
+
+# Set known coordinates (selected manually)
+p25 <- c(576102,  6219809)
+old_growth <- c(576699,  6196176)
+plantation <- c(462561, 6225310)
+
+# Expand to 100 m x 100 m
+p25 <- st_bbox(c(xmin = p25[1] - 64, xmax = p25[1] + 64,
+                 ymin = p25[2] - 50, ymax = p25[2] + 50),
+               crs = st_crs(forest_quality)) 
+old_growth <- st_bbox(c(xmin = old_growth[1] - 64, xmax = old_growth[1] + 64,
+                        ymin = old_growth[2] - 50, ymax = old_growth[2] + 50),
+                      crs = st_crs(forest_quality)) 
+plantation <- st_bbox(c(xmin = plantation[1] - 64, xmax = plantation[1] + 64,
+                        ymin = plantation[2] - 50, ymax = plantation[2] + 50),
+                      crs = st_crs(forest_quality))
+
+# Generate orthos 
+# p25_ortho <- get_ortho(p25, "p25", scale = FALSE)
+# old_growth_ortho <- get_ortho(old_growth, "old_growth", scale = FALSE)
+# plantation_ortho <- get_ortho(plantation, "plantation", scale = FALSE)
+
+# Load orthos
+p25_ortho <- rast("data/orthophotos/p25.tif")
+old_growth_ortho <- rast("data/orthophotos/old_growth.tif")
+plantation_ortho <- rast("data/orthophotos/plantation.tif")
+
+plot_ortho <- function(ortho, ortho_name, frame_colour = "black",
+                       scale_caption = "50 m"){
+  width <- ext(ortho)[2] - ext(ortho)[1]
+  height <- ext(ortho)[4] - ext(ortho)[3]
+  temp_file <- tempfile()
+  png(temp_file, width = 640 * 2, height = 500 * 2)
+  plotRGB(ortho)
+  text(ext(ortho)[1] + width * 0.04,
+       ext(ortho)[3] + height * 0.88,
+       ortho_name,
+       adj = 0,
+       col = "white",
+       cex = 10)
+  rect(ext(ortho)[1] + width * 0.9 - 50,
+       ext(ortho)[3] + height * 0.1,
+       ext(ortho)[1] + width * 0.9,
+       ext(ortho)[3] + height * 0.1 + height * 0.025,
+       col = "white",
+       border = "white")
+  text(ext(ortho)[1] + width * 0.9 - 25,
+       ext(ortho)[3] + height * 0.21,
+       scale_caption,
+       col = "white",
+       cex = 10)
+  dev.off()
+  gg_grob <- ggplot() +
+    draw_image(temp_file) +
+    geom_rect(aes(xmin = 0, xmax = 1,
+             ymin = 0.5 - (0.5 * (500) / (640)), 
+             ymax = 0.5 + (0.5 * (500) / (640))), 
+             colour = frame_colour,
+             size = 1.5,
+             fill = NA) +
+     # labs(subtitle = ortho_name) +
+    coord_equal() +
+    theme_map() +
+    theme(plot.margin=unit(c(0,0,0,0),"mm"),
+          #panel.border = element_rect(colour = "red", fill = NA)
+          )
+  rm(temp_file)
+  return(gg_grob)
+}
+
+p25_grob <- plot_ortho(p25_ortho, "§25 Forest", high_quality_col)
+old_growth_grob <- plot_ortho(old_growth_ortho, "Private Old Growth",
+                              high_quality_col)
+plantation_grob <- plot_ortho(plantation_ortho, "Plantation",
+                              low_quality_col)
+
+# Set map extent
+main_panel_xlim <- st_bbox(biowide_regions)[c(1,3)] * c(0.6, 1.15)
+main_panel_ylim <- st_bbox(biowide_regions)[c(2,4)] * c(0.98, 1.0125)
+main_panel_width <- main_panel_xlim[2] - main_panel_xlim[1]
+main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
+
+main_panel <- ggplot() + 
+  geom_sf(aes(colour = region,
+              fill = region), 
+          size = 1,
+          data = biowide_regions) +
+  geom_richtext(aes(x = x, 
+                    y = y, 
+                    label = label,
+                    colour = region,
+                    hjust = hjust,
+                    vjust = vjust), 
+                data = biowide_regions,
+                fill = NA,
+                label.color = NA) +
+  scale_colour_manual(values = c("#0F403F", # Bornholm 
+                                 "#3D8A88", # Fune_Lolland 
+                                 "#C575D9", # Nordjlland 
+                                 "#7D3E8C", # Oestjylland 
+                                 "#62B5B4", # Sjaelland 
+                                 "#B88AC5")) +  # Vestjylland
+  scale_fill_manual(values = c("#F5FAFA", # Bornholm
+                               "#F5FAFA", # Fune_Lolland
+                               "#F9F5FA", # Nordjlland
+                               "#F9F5FA", # Oestjylland
+                               "#F5FAFA", # Sjaelland
+                               "#F9F5FA")) + # Vestjylland
+  new_scale_color() +
+  geom_sf(data = pixel_training_data %>% sample_n(10000), 
+          mapping = aes(colour = forest_value),
+          size = 0.001) +
+  scale_colour_manual(values = c(high_quality_col,
+                                 low_quality_col)) +
+  coord_sf(clip = "off",
+           crs = st_crs(biowide_regions),
+           xlim = main_panel_xlim,
+           ylim = main_panel_ylim) +
+  labs(title = "Best Model - Overall Performance",
+       subtitle = paste0(
+         "Accuracy: ", round(performance_overall$overall["Accuracy"], 2), 
+         "\nSensitivity: ", round(performance_overall$byClass["Sensitivity"], 2),
+         "\nUser Accuracy: ", round(performance_overall$byClass["Pos Pred Value"], 2))) +
   annotate("text", 
-           x = ext(forest_quality)[1] + 
-             0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           y = ext(forest_quality)[3] +
-             0.9325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           label = "High Quality", 
+           x = main_panel_xlim[1] + 
+             0.63 * main_panel_width,
+           y = 11000 + main_panel_ylim[1] +
+             1.13 * main_panel_height,
+           label = "High Quality Training Pixels", 
            colour = "black",
            size = 14 * 0.35,
            hjust = 0,
            vjust = 0.5) +
   annotate("rect", 
-           xmin = ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           xmax = 20000 + ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           ymin = ext(forest_quality)[3] +
-             0.9 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           ymax = 20000 + ext(forest_quality)[3] +
-             0.9 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+           xmin = main_panel_xlim[1] + 
+             0.59 * main_panel_width,
+           xmax = 20000 + main_panel_xlim[1] + 
+             0.59 * main_panel_width,
+           ymin = main_panel_ylim[1] +
+             1.13 * main_panel_height,
+           ymax = 20000 + main_panel_ylim[1] +
+             1.13 * main_panel_height,
            color = "black",
            fill = high_quality_col) +
   annotate("text", 
-           x = ext(forest_quality)[1] + 
-             0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           y = ext(forest_quality)[3] +
-             0.8325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           label = "Low Quality", 
+           x = main_panel_xlim[1] + 
+             0.63 * main_panel_width,
+           y = 11000 + main_panel_ylim[1] +
+             1.08 * main_panel_height,
+           label = "Low Quality Training Pixels", 
            colour = "black",
            size = 14 * 0.35,
            hjust = 0,
            vjust = 0.5) +
   annotate("rect", 
-           xmin = ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           xmax = 20000 + ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           ymin = ext(forest_quality)[3] +
-             0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           ymax = 20000 + ext(forest_quality)[3] +
-             0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+           xmin = main_panel_xlim[1] + 
+             0.59 * main_panel_width,
+           xmax = 20000 + main_panel_xlim[1] + 
+             0.59 * main_panel_width,
+           ymin = main_panel_ylim[1] +
+             1.08 * main_panel_height,
+           ymax = 20000 +main_panel_ylim[1] +
+             1.08 * main_panel_height,
            color = "black",
            fill = low_quality_col) +
-  labs(title = "Predicted high quality forest: 2332 kmÂ²") +
   theme_map() +
-  theme(legend.position = "none"
-        #, panel.border = element_rect(colour = "black", fill = NA)
+  theme(legend.position = "none",
+        plot.margin = margin(0.25,0,0.25,0.25, unit = "in"),
+        #panel.border = element_rect(colour = "red", fill = NA)
         )
 
-## Zoom-in panels
-
-# Set areas of interest
-husby_klit <- st_bbox(c(xmin = 8.12327, ymin = 56.27823, 
-                        xmax = 8.20458, ymax = 56.31252),
-                      crs = 4326) %>%
-  st_as_sfc() %>%
-  st_transform(crs(forest_quality)) %>%
-  st_bbox()
-mols_bjerge <- st_bbox(c(xmin = 10.49393, ymin = 56.20079, 
-                         xmax = 1175515, ymax = 56.22565),
-                       crs = 4326) %>%
-  st_as_sfc() %>%
-  st_transform(crs(forest_quality)) %>%
-  st_bbox()
-frederiksdal <- st_bbox(c(xmin = 12.41060, ymin = 55.76796, 
-                          xmax = 12.47054, ymax = 55.78682),
-                        crs = 4326) %>%
-  st_as_sfc() %>%
-  st_transform(crs(forest_quality)) %>%
-  st_bbox()
-bornholm <- st_bbox(c(xmin = 14.84336, ymin = 55.07429, 
-                      xmax = 14.99530, ymax = 55.15600),
-                    crs = 4326) %>%
-  st_as_sfc() %>%
-  st_transform(crs(forest_quality)) %>%
-  st_bbox()
-
-# Adjust bounding boxes to fit same ration as big map using a helper function
-adjust_bb <- function(bbox){
-  ratio <-  (ext(forest_quality)[4] - ext(forest_quality)[3]) /
-    (ext(forest_quality)[2] - ext(forest_quality)[1])
-  # adjust bbox based on x ration 
-  height <- bbox["ymax"] - bbox["ymin"]
-  target_height <- (bbox["xmax"] - bbox["xmin"]) * ratio
-  bbox["ymin"] <- bbox["ymin"] + 0.5 * height - 0.5 * target_height
-  bbox["ymax"] <- bbox["ymin"] + target_height
-  return(bbox)
-}
-
-# Check that this works as intended
-plot(st_as_sfc(bornholm))
-plot(st_as_sfc(adjust_bb(bornholm)), col = "red", add = T)
-
-# Update bboxes
-husby_klit <- adjust_bb(husby_klit)
-mols_bjerge <- adjust_bb(mols_bjerge)
-frederiksdal <- adjust_bb(frederiksdal)
-bornholm <- adjust_bb(bornholm)
-
-# helper function to generate sub panels
-generate_closeup <- function(bbox){
-  forest_crop <- crop(forest_quality, vect(st_as_sfc(bbox)))
-  gplot(forest_crop, maxpixels = 100000) +
-    geom_tile(aes(fill = value)) +
-    scale_fill_gradient(low = high_quality_col, high = low_quality_col,
-                        na.value = NA) +
-    coord_equal() +
-    theme_map() 
-}
-
-husby_klit_forest_qual <- generate_closeup(husby_klit)
-mols_bjerge_forest_qual <- generate_closeup(mols_bjerge)
-frederiksdal_forest_qual <- generate_closeup(frederiksdal)
-bornholm_forest_qual <- generate_closeup(bornholm)
-
-ortho_files <- list.files("O:/Nat_Ecoinformatics/B_Read/LegacyData/Denmark/Orthophotos/SOF2016/Final_ecw/", "ECW$", full.names = T)
-
-# helper function to generate orthophoto
-get_ortho <- function(bbox){
-  tile_footprints <- read_sf("F:/JakobAssmann/EcoDes-DK15_v1.1.0/tile_footprints/tile_footprints.shp")
-  tile_ids <- st_intersection(tile_footprints, st_as_sfc(bbox)) %>% pull(tile_id)
-  sapply(tile_ids, function(x) ortho_files[grepl(x, ortho_files)]) %>% map(rast) %>%
-    reduce(merge)
-}
-library(stars)
-
-read_stars(ortho_files[2334])
-
+plot_grid(main_panel,
+          plot_grid(p25_grob,
+                    old_growth_grob,
+                    plantation_grob,
+                    nrow = 3),
+          ncol = 2,
+          rel_widths = c(2,1)) %>%
+  save_plot("docs/figures/figure_2.png", 
+          .,
+          base_height = 6,
+          bg = "white")
