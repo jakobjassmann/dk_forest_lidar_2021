@@ -11,6 +11,7 @@ forest_mask <- sub_tree_cover == 2
 # Project to EcoDes-DK15 grid
 dtm10m <- rast("F:/JakobAssmann/EcoDes-DK15_v1.1.0/dtm_10m/dtm_10m.vrt")
 forest_mask <- terra::project(forest_mask, dtm10m, method = "near")
+forest_mask <- crop(forest_mask, dtm10m)
 
 # Set 0 to NA
 forest_mask <- classify(forest_mask, 

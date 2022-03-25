@@ -25,7 +25,20 @@ disturbance_since_2015 <- terra::project(disturbance_since_2015,
 forest_mask <- rast("data/basemap_forests/forest_mask.tif")
 
 # Mask out non-forests
+disturbance_since_2015 <- crop(disturbance_since_2015, forest_mask)
+disturbance_since_2015 <- extend(disturbance_since_2015, forest_mask)
 disturbance_since_2015 <- mask(disturbance_since_2015, forest_mask)
+
+# Test masking procedure
+test_ext <- ext(490470,
+                491360, 
+                6264810,
+                6265670)
+forest_mask_sub <- crop(forest_mask, test_ext)
+disturbance_sub <- crop(disturbance_since_2015, test_ext)
+plot(forest_mask_sub)
+plot(disturbance_sub)
+plot(mask(disturbance_sub, forest_mask_sub))
 
 # Write to file
 writeRaster(disturbance_since_2015, 
