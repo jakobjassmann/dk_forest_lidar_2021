@@ -14,7 +14,7 @@ library(ggnewscale)
 
 # Set colours
 high_quality_col <- "#3CB0AE"
-low_quality_col <- "#DBA318"
+low_quality_col <- "#D67D49" 
 
 # Load pixel sample
 load("data/training_data/pixel_training.Rda")
@@ -124,13 +124,13 @@ plantation <- c(462561, 6225310)
 # Expand to 100 m x 100 m
 p25 <- st_bbox(c(xmin = p25[1] - 64, xmax = p25[1] + 64,
                  ymin = p25[2] - 50, ymax = p25[2] + 50),
-               crs = st_crs(forest_quality)) 
+               crs = st_crs(biowide_regions)) 
 old_growth <- st_bbox(c(xmin = old_growth[1] - 64, xmax = old_growth[1] + 64,
                         ymin = old_growth[2] - 50, ymax = old_growth[2] + 50),
-                      crs = st_crs(forest_quality)) 
+                      crs = st_crs(biowide_regions)) 
 plantation <- st_bbox(c(xmin = plantation[1] - 64, xmax = plantation[1] + 64,
                         ymin = plantation[2] - 50, ymax = plantation[2] + 50),
-                      crs = st_crs(forest_quality))
+                      crs = st_crs(biowide_regions))
 
 # Generate orthos 
 # p25_ortho <- get_ortho(p25, "p25", scale = FALSE)
@@ -185,7 +185,7 @@ plot_ortho <- function(ortho, ortho_name, frame_colour = "black",
   return(gg_grob)
 }
 
-p25_grob <- plot_ortho(p25_ortho, "ง25 Forest", high_quality_col)
+p25_grob <- plot_ortho(p25_ortho, "ยง25 Forest", high_quality_col)
 old_growth_grob <- plot_ortho(old_growth_ortho, "Private Old Growth",
                               high_quality_col)
 plantation_grob <- plot_ortho(plantation_ortho, "Plantation",
@@ -224,7 +224,7 @@ main_panel <- ggplot() +
                                "#F5FAFA", # Sjaelland
                                "#F9F5FA")) + # Vestjylland
   new_scale_color() +
-  geom_sf(data = pixel_training_data %>% sample_n(10000), 
+  geom_sf(data = pixel_training_data, # %>% sample_n(20000), 
           mapping = aes(colour = forest_value),
           size = 0.001) +
   scale_colour_manual(values = c(high_quality_col,
