@@ -107,8 +107,8 @@ main_panel <- gplot(disturbance_since_2015, maxpixels = 500000) +
   )
 
 
-mols_bjerge <- st_bbox(c(xmin = 592625, ymin = 6229433, 
-                         xmax = 592625 + 3500, ymax = 6229433 + 3000),
+mols_bjerge <- st_bbox(c(xmin = 593625, ymin = 6230433, 
+                         xmax = 593625 + 1500, ymax = 6230433 + 1000),
                        crs =  crs(forest_quality)) %>%
   st_as_sfc() %>%
   st_bbox()
@@ -129,22 +129,25 @@ mols_bjerge <- adjust_bb(mols_bjerge)
 
 # Load orthophoto file names and tile_footprints
 ortho_files_2021 <- list.files("F:/JakobAssmann/orthos_2021/extractions", "[eE][cC][wW]$", full.names = T)
+ortho_files_2014 <- list.files("O:/Nat_Ecoinformatics/B_Read/LegacyData/Denmark/Orthophotos/SOF2014/UTM32N", "[eE][cC][wW]$", full.names = T)
 tile_footprints <- read_sf("F:/JakobAssmann/EcoDes-DK15_v1.1.0/tile_footprints/tile_footprints.shp")
 
 # helper function to generate orthophoto
-get_ortho <- function(bbox, area_name, scale_to = 0.5){
+get_ortho <- function(bbox, area_name, scale_to = 0.5, orthos = ortho_files_2014){
   tile_ids <- st_intersection(tile_footprints, st_as_sfc(bbox)) %>% pull(tile_id)
   # Get list of ecw files
-  tile_ids <- tile_ids %>% 
-    # sapply(function(tile_id){
-    #   x <- gsub("([0-9]{4})_([0-9]{3})", "\\1", tile_id) %>% as.numeric()
-    #   y <- gsub("([0-9]{4})_([0-9]{3})", "\\2", tile_id) %>% as.numeric()
-    #   if(x %% 2 != 0) x <- x - 1
-    #   if(y %% 2 != 0) y <- y - 1
-    #   return(paste0(x, "_", y))
-    # }) %>%
+  if(grepl(".*2014.*", orthos[1])) {
+    tile_ids <- tile_ids %>% 
+    sapply(function(tile_id){
+      x <- gsub("([0-9]{4})_([0-9]{3})", "\\1", tile_id) %>% as.numeric()
+      y <- gsub("([0-9]{4})_([0-9]{3})", "\\2", tile_id) %>% as.numeric()
+      if(x %% 2 != 0) x <- x - 1
+      if(y %% 2 != 0) y <- y - 1
+      return(paste0(x, "_", y))
+    }) %>%
     unique()
-  ecw_files <- sapply(tile_ids, function(x) ortho_files_2021[grepl(x, ortho_files_2021)]) 
+    }
+  ecw_files <- sapply(tile_ids, function(x) orthos[grepl(x, orthos)]) 
   
   # Set scale term if needed
   if(scale_to == FALSE){
@@ -180,8 +183,10 @@ get_ortho <- function(bbox, area_name, scale_to = 0.5){
   }
   return(rast(paste0("data/orthophotos/", area_name, ".tif")))
 }
-
-#mols_bjerge_forest_ortho_2021 <- get_ortho(mols_bjerge, "mols_bjerge_2021")
+mols_bjerge_forest_ortho_2014 <- get_ortho(mols_bjerge, "mols_bjerge_2014",
+                                           orthos = ortho_files_2014)
+mols_bjerge_forest_ortho_2021 <- get_ortho(mols_bjerge, "mols_bjerge_2021",
+                                           orthos = ortho_files_2021)
 
 mols_bjerge_forest_ortho_2021 <- rast("data/orthophotos/mols_bjerge_2021.tif")
 mols_bjerge_forest_ortho <- rast("data/orthophotos/mols_bjerge.tif")
@@ -203,14 +208,24 @@ plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
   if(qual == T){
   plot(forest_qual_crop,
        col = c(high_quality_col, low_quality_col),
-       alpha = 0.8,
+       alpha = 0.6,
        add = T)
   }
   if(dist == T){
-    lines(dist_crop,
-         col =  dist_col,
+    polys(dist_crop,
+         #col =  "#00000000",
+         density = 5,
          alpha = 1,
-         lwd = 2)
+         lwd = 5,
+         col = dist_col,
+         border = dist_col)
+    polys(dist_crop,
+          #col =  "#00000000",
+          density = 5,
+          alpha = 1,
+          lwd = 2,
+          col = dist_col,
+          border = NA)
   }
   text(ext(ortho)[1] + width * 0.04,
        ext(ortho)[3] + height * 0.88,
@@ -218,15 +233,15 @@ plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
        adj = 0,
        col = "white",
        cex = 10)
-  rect(ext(ortho)[1] + width * 0.9 - 1000,
+  rect(ext(ortho)[1] + width * 0.9 - 300,
        ext(ortho)[3] + height * 0.1,
        ext(ortho)[1] + width * 0.9,
        ext(ortho)[3] + height * 0.1 + height * 0.025,
        col = "white",
        border = "white")
-  text(ext(ortho)[1] + width * 0.9 - 500,
+  text(ext(ortho)[1] + width * 0.9 - 150,
        ext(ortho)[3] + height * 0.21,
-       "1 km",
+       "300 m",
        col = "white",
        cex = 10)
   dev.off()
@@ -247,19 +262,26 @@ plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
   return(gg_grob)
 }
 
-mols_bjerge_grob <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho,
-                                     "Mols Bjerge 2014", qual = T, dist = T, 
-                                     dist_col = "#7D3E8C")
+mols_bjerge_grob_2014_qual <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
+                                                "Mols Bjerge Quality", qual = T, dist = T, 
+                                                dist_col = "#C575D9")
+
+mols_bjerge_grob_2014 <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
+                                                "Mols Bjerge Disturbance\n2014", qual = F, dist = T, 
+                                                dist_col = "#C575D9")
+
 mols_bjerge_grob_2021 <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2021,
-                                      "Mols Bjerge 2021", qual = F, dist = T,
+                                      "Mols Bjerge Disturbance\n2021", qual = F, dist = T,
                                       dist_col = "#C575D9")
-plot_grid(main_panel,
-          plot_grid(mols_bjerge_grob,
+plot_grid(plot_grid(mols_bjerge_grob_2014_qual,
+                    main_panel,
+                    nrow =2),
+          plot_grid(mols_bjerge_grob_2014,
                     mols_bjerge_grob_2021,
                     nrow = 2),
           ncol = 2,
-          rel_widths = c(2,1)) %>%
+          rel_widths = c(1,1)) %>%
   save_plot("docs/figures/figure_4.png", .,
-            base_height = 6,
-            base_asp =  (772 + 0.5 * 772) / 603,
+            base_height = 8,
+            base_asp = 772/603, #  (772 + 0.5 * 772) / 603,
             bg = "white")
