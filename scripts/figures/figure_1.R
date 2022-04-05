@@ -7,7 +7,7 @@ library(tidyverse)
 library(sf)
 library(ggplot2)
 library(cowplot)
-# library(ggtext)
+library(ggtext)
 
 # Load shape files 
 biowide_regions <- read_sf("data/stratification/biowide_georegions/biowide_zones.shp")
@@ -63,15 +63,15 @@ main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
                 fill = region), 
             size = 0.5,
             data = biowide_regions) +
-    geom_text(aes(x = x, 
+    geom_richtext(aes(x = x, 
                       y = y, 
-                      label = region,
+                      label = paste0("<span style = font-size:16pt>", region, "</span>"),
                       colour = region,
                       hjust = hjust,
                       vjust = vjust), 
                   data = biowide_regions,
-                  # fill = NA,
-                  # label.color = NA
+                   fill = NA,
+                  label.color = NA
               ) +
     scale_colour_manual(values = c("#0F403F", # Bornholm 
                                    "#3D8A88", # Fune_Lolland 
