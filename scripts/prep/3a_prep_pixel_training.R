@@ -30,7 +30,7 @@ high_quality <- list.files("data/response_data/high_quality_forests/",
   # Load files and assign source column
   map(function(shp_file){
     polygons <- read_sf(shp_file)
-    # Filter old growth forests if needed
+    # Filter old growth forests if needed (aftaler om natur)
     if(sum("tilskudsor" %in% names(polygons)) > 0){
       polygons <- filter(polygons, tilskudsor == "Privat urørt skov")
     }
@@ -42,35 +42,31 @@ high_quality <- list.files("data/response_data/high_quality_forests/",
   mutate(polygon_source = case_when(
     polygon_source == "skov_kortlaegning_2016_2018" ~ "p15",
     polygon_source == "p25_offentligareal" ~ "p25",
-    polygon_source == "aftale_natur_tinglyst" ~ "aftaler_om_natur",
-    polygon_source == "tilsagn17_st_uroert_skov_privat_tilskud" ~ "private_old_growth",
-    polygon_source == "tilsagn18_st_uroert_skov" ~ "private_old_growth",
-    polygon_source == "tilsagn19_st_uroert_skov_privat_tilskud" ~ "private_old_growth",
-    polygon_source == "tilsagn20_st_uroert_skov_privat_tilskud" ~ "private_old_growth",
+    polygon_source == "aftale_natur_tinglyst" ~ "private_old_growth",
   ))
 
 ## Load and prep geometries for low quality forests
 # Plantations geometries and meta data
 plantations <- read_sf("data/response_data/low_quality_forests/NST_plantations/LitraPolygoner_region/LitraPolygoner_region.shp")
 plantations_meta <- read_excel("data/response_data/low_quality_forests/NST_plantations/NST  2019 08012019 ber 16012020 til bios_au.xlsx") 
-# Helper function to classify age bins
+# Helper function to classify age bins (given as decadal mid-points, e.g., 5, 15, 25, 35 etc.)
 sort_into_age_bins <- function(Aldersklasse){
-  case_when(Aldersklasse > 0 & Aldersklasse <= 10 ~ "0_to_10",
-            Aldersklasse > 10 & Aldersklasse <= 25 ~ "10_to_25",
-            Aldersklasse > 25 & Aldersklasse <= 50 ~ "25_to_50",
-            Aldersklasse > 50 & Aldersklasse <= 75 ~ "50_to_75",
-            Aldersklasse > 75 & Aldersklasse <= 100 ~ "75_to_100",
-            TRUE ~ "NA") 
+  case_when(Aldersklasse > 0 & Aldersklasse <= 5 ~ "0_to_10",  # Filters decadal mid-point 5
+            Aldersklasse > 5 & Aldersklasse <= 25 ~ "10_to_30", # Filters decadal mid-points 15 and 25
+            Aldersklasse > 25 & Aldersklasse <= 45 ~ "30_to_50", # Filters decadal mid-points 35 and 45
+            Aldersklasse > 45 & Aldersklasse <= 65 ~ "50_to_70", # Filters decadal mid-poinst 55 and 65
+            Aldersklasse > 65 & Aldersklasse <= 95 ~ "70_to_100", # Filters decadal mid-points 75, 85 and 95
+            TRUE ~ "NA") # Everything else is set to NA
 }
 # Data cleaning
 plantations_meta <- plantations_meta %>%
-  select(Ident, Aldersklasse, `ANV 4`, `Allerede urørt`, Status) %>%
-  filter(`ANV 4` != 1) %>%
-  filter(`Allerede urørt` != "Urørt") %>%
-  filter(Status != "H") %>%
+  select(Ident, Aldersklasse, `ANV 3`, `Allerede urørt`, Status) %>%
+  filter(`ANV 3` == 0) %>% # Keep only ANV 3 values of “0” (remove everything else)
+  filter(`Allerede urørt` != "Urørt") %>% # Throw out all rows with label “Urørt"
+  filter(Status == "G") %>% # Keep only current plantations (status = “G”) 
   na.omit() %>%
   mutate(age_bin = sort_into_age_bins(Aldersklasse)) %>%
-  filter(age_bin != "NA") %>% 
+  filter(age_bin != "NA") %>% # Remove all age classes not in the above categories
   group_by(age_bin) %>%
   sample_n(1000)
 # Filter geometries
