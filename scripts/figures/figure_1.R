@@ -7,7 +7,7 @@ library(tidyverse)
 library(sf)
 library(ggplot2)
 library(cowplot)
-library(ggtext)
+# library(ggtext)
 
 # Load shape files 
 biowide_regions <- read_sf("data/stratification/biowide_georegions/biowide_zones.shp")
@@ -26,14 +26,14 @@ biowide_regions <-
          x = x_cen + map_span_x * c(-0.10,  # Nordjlland
                                     -0.15,  # Vestjylland
                                     0.30,  # Oestjylland
-                                    0.25,  # Sjaelland
+                                    0.20,  # Sjaelland
                                     -0.00,  # Bornholm
                                     -0.20), # Fune_Lolland
          
          y = y_cen + map_span_y * c( 0.10,  # Nordjlland
                                      0.10,  # Vestjylland
                                      0.30,  # Oestjylland
-                                     0.00,  # Sjaelland
+                                     0.10,  # Sjaelland
                                      -0.10,  # Bornholm
                                      -0.20), # Fune_Lolland
          hjust = c(1, # Nordjlland
@@ -45,7 +45,7 @@ biowide_regions <-
          vjust = c(0, # Nordjlland
                    1, # Vestjylland
                    0, # Oestjylland
-                   1, # Sjaelland
+                   0, # Sjaelland
                    1, # Bornholm
                    1) # Fune_Lolland
   )
@@ -91,11 +91,12 @@ main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
              ylim = main_panel_ylim) +
     theme_map() +
     theme(legend.position = "none",
-          plot.background = element_rect(color = "red")))
+          #plot.background = element_rect(color = "red")
+          ))
 save_plot("docs/figures/map_for_figure_1.png",
           map_plot,
-          base_asp = main_panel_width / main_panel_height
-          )
+          base_asp = main_panel_width / main_panel_height,
+          bg = "white")
   
   
 
