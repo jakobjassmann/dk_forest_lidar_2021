@@ -13,6 +13,11 @@ disturbance_year <- rast("data/forest_change_cs/disturbance_year_1986-2020_denma
 # Determine change since 2015
 disturbance_since_2015 <- disturbance_year > 2015
 
+# Reclassify values so that 0s are NA
+disturbance_since_2015 <- classify(disturbance_since_2015,
+                                   matrix(c(0, NA, 
+                                            1, 1),
+                                          byrow = T, ncol = 2))
 # Load projections raster as template
 gbm_biowide <- rast("data/projections/gbm_biowide/forest_quality_gbm_biowide.vrt")
 
