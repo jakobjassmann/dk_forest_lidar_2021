@@ -106,7 +106,9 @@ biowide_regions$region[6] <- "Fune-Lolland"
 biowide_regions <- mutate(
   biowide_regions,
   label = paste0("<span style='font-size:16pt'>",
-                 "**", region, "**",
+                 #"**", 
+                 region, 
+                 #"**",
                  "</span>",
                  "<span style='font-size:10pt; color:black'>",
                  "<br>Accuracy: ", accuracy,
@@ -198,32 +200,33 @@ main_panel_width <- main_panel_xlim[2] - main_panel_xlim[1]
 main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
 
 main_panel <- ggplot() + 
-  geom_sf(aes(colour = region,
-              fill = region), 
-          size = 1,
+  geom_sf(#aes(colour = region,
+          #    fill = region), 
+          size = 0.5,
+          fill = NA,
           data = biowide_regions) +
   geom_richtext(aes(x = x, 
                     y = y, 
                     label = label,
-                    colour = region,
+                    #colour = region,
                     hjust = hjust,
                     vjust = vjust), 
                 data = biowide_regions,
                 fill = NA,
                 label.color = NA) +
-  scale_colour_manual(values = c("#0F403F", # Bornholm 
-                                 "#3D8A88", # Fune_Lolland 
-                                 "#C575D9", # Nordjlland 
-                                 "#7D3E8C", # Oestjylland 
-                                 "#62B5B4", # Sjaelland 
-                                 "#B88AC5")) +  # Vestjylland
-  scale_fill_manual(values = c("#F5FAFA", # Bornholm
-                               "#F5FAFA", # Fune_Lolland
-                               "#F9F5FA", # Nordjlland
-                               "#F9F5FA", # Oestjylland
-                               "#F5FAFA", # Sjaelland
-                               "#F9F5FA")) + # Vestjylland
-  new_scale_color() +
+  # scale_colour_manual(values = c("#0F403F", # Bornholm 
+  #                                "#3D8A88", # Fune_Lolland 
+  #                                "#C575D9", # Nordjlland 
+  #                                "#7D3E8C", # Oestjylland 
+  #                                "#62B5B4", # Sjaelland 
+  #                                "#B88AC5")) +  # Vestjylland
+  # scale_fill_manual(values = c("#F5FAFA", # Bornholm
+  #                              "#F5FAFA", # Fune_Lolland
+  #                              "#F9F5FA", # Nordjlland
+  #                              "#F9F5FA", # Oestjylland
+  #                              "#F5FAFA", # Sjaelland
+  #                              "#F9F5FA")) + # Vestjylland
+  # new_scale_color() +
   geom_sf(data = pixel_training_data, # %>% sample_n(20000), 
           mapping = aes(colour = forest_value),
           size = 0.001) +
@@ -280,6 +283,23 @@ main_panel <- ggplot() +
              1.08 * main_panel_height,
            color = "black",
            fill = low_quality_col) +
+  annotate("rect",
+           xmin = main_panel_xlim[1] + 
+             0.05 * main_panel_width,
+           xmax = 100000 + main_panel_xlim[1] + 
+             0.05 * main_panel_width,
+           ymin = main_panel_ylim[1] + 20000,
+           ymax = main_panel_ylim[1] + 20000 + 5000,
+           fill = "black") +
+  annotate("text", 
+           x = 50000 + main_panel_xlim[1] + 
+             0.05 * main_panel_width,
+           y = main_panel_ylim[1] + 20000 + 25000,
+           label = "100 km", 
+           colour = "black",
+           size = 14 * 0.35,
+           hjust = 0.5,
+           vjust = 0.5) +
   theme_map() +
   theme(legend.position = "none",
         plot.margin = margin(0.25,0,0.25,0.25, unit = "in"),

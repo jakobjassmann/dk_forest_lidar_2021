@@ -28,13 +28,13 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
           inherit.aes = F, 
           fill = "#FAFAFA", 
           colour = "#919191",
-          size = 1) +
+          size = 0.5) +
   geom_tile(aes(fill = value)) +
   scale_fill_gradient(low = high_quality_col, high = low_quality_col,
                       na.value = NA)+
   annotate("text", 
            x = ext(forest_quality)[1] + 
-             0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.85 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            y = ext(forest_quality)[3] +
              0.9325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
            label = "High Quality", 
@@ -44,9 +44,9 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
            vjust = 0.5) +
   annotate("rect", 
            xmin = ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.79 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            xmax = 20000 + ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.79 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            ymin = ext(forest_quality)[3] +
              0.9 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
            ymax = 20000 + ext(forest_quality)[3] +
@@ -55,7 +55,7 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
            fill = high_quality_col) +
   annotate("text", 
            x = ext(forest_quality)[1] + 
-             0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.85 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            y = ext(forest_quality)[3] +
              0.8325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
            label = "Low Quality", 
@@ -65,16 +65,33 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
            vjust = 0.5) +
   annotate("rect", 
            xmin = ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.79 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            xmax = 20000 + ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.79 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            ymin = ext(forest_quality)[3] +
              0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
            ymax = 20000 + ext(forest_quality)[3] +
              0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
            color = "black",
            fill = low_quality_col) +
-  labs(title = "Estimated High Quality Forest: 2332 km²") +
+  annotate("rect",
+           xmin = ext(forest_quality)[1] + 
+             0.675 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+           xmax = 100000 + ext(forest_quality)[1] + 
+             0.675 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+           ymin = st_bbox(denmark)["ymin"] + 20000,
+           ymax = st_bbox(denmark)["ymin"] + 20000 + 5000,
+           fill = "black") +
+  annotate("text", 
+           x = 50000 + ext(forest_quality)[1] + 
+             0.675 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+           y = st_bbox(denmark)["ymin"] + 20000 + 15000,
+           label = "100 km", 
+           colour = "black",
+           size = 14 * 0.35,
+           hjust = 0.5,
+           vjust = 0.5) +
+  labs(title = "Estimated High Quality Forest: 2332 km² (233200 ha) ~ 30% of total") +
   theme_map() +
   theme(legend.position = "none",
         plot.margin = unit(c(0.1,0,0,0), "in"),
@@ -128,8 +145,8 @@ frederiksdal <- adjust_bb(frederiksdal)
 bornholm <- adjust_bb(bornholm)
 
 # Load orthophoto file names and tile_footprints
-ortho_files <- list.files("O:/Nat_Ecoinformatics/B_Read/LegacyData/Denmark/Orthophotos/SOF2014/UTM32N", "[eE][cC][wW]$", full.names = T)
-tile_footprints <- read_sf("F:/JakobAssmann/EcoDes-DK15_v1.1.0/tile_footprints/tile_footprints.shp")
+# ortho_files <- list.files("O:/Nat_Ecoinformatics/B_Read/LegacyData/Denmark/Orthophotos/SOF2014/UTM32N", "[eE][cC][wW]$", full.names = T)
+# tile_footprints <- read_sf("F:/JakobAssmann/EcoDes-DK15_v1.1.0/tile_footprints/tile_footprints.shp")
 
 # helper function to generate orthophoto
 get_ortho <- function(bbox, area_name, scale_to = 0.5){
@@ -187,25 +204,27 @@ get_ortho <- function(bbox, area_name, scale_to = 0.5){
 # frederiksdal_forest_ortho <- get_ortho(frederiksdal, "frederiksdal")
 # bornholm_forest_ortho <- get_ortho(bornholm, "bornholm")
 
-husby_klit_forest_ortho <- rast("data/orthophotos/husby_klit.tif")
-mols_bjerge_forest_ortho <- rast("data/orthophotos/mols_bjerge.tif")
+# husby_klit_forest_ortho <- rast("data/orthophotos/husby_klit.tif")
+# mols_bjerge_forest_ortho <- rast("data/orthophotos/mols_bjerge.tif")
 frederiksdal_forest_ortho <- rast("data/orthophotos/frederiksdal.tif")
-bornholm_forest_ortho <- rast("data/orthophotos/bornholm.tif")
+# bornholm_forest_ortho <- rast("data/orthophotos/bornholm.tif")
 
 plotRGB(frederiksdal_forest_ortho,
         scale = 255)
 # function to generate plot
-plot_ortho_n_qual <- function(ortho, ortho_name){
+plot_ortho_n_qual <- function(ortho, ortho_name, qual = F){
   forest_qual_crop <- crop(forest_quality, ext(ortho))
   width <- ext(ortho)[2] - ext(ortho)[1]
   height <- ext(ortho)[4] - ext(ortho)[3]
   temp_file <- tempfile()
   png(temp_file, width = 772 * 2, height = 603 * 2)
   plotRGB(ortho)
-  plot(forest_qual_crop,
-       col = c(high_quality_col, low_quality_col),
-       alpha = 0.8,
-       add = T)
+  if(qual == T){
+    plot(forest_qual_crop,
+         col = c(high_quality_col, low_quality_col),
+         alpha = 0.8,
+         add = T)
+  } 
   text(ext(ortho)[1] + width * 0.04,
        ext(ortho)[3] + height * 0.88,
        ortho_name,
@@ -213,16 +232,16 @@ plot_ortho_n_qual <- function(ortho, ortho_name){
        col = "white",
        cex = 10)
   rect(ext(ortho)[1] + width * 0.9 - 1000,
-            ext(ortho)[3] + height * 0.1,
-            ext(ortho)[1] + width * 0.9,
-            ext(ortho)[3] + height * 0.1 + height * 0.025,
+       ext(ortho)[3] + height * 0.1,
+       ext(ortho)[1] + width * 0.9,
+       ext(ortho)[3] + height * 0.1 + height * 0.025,
        col = "white",
        border = "white")
   text(ext(ortho)[1] + width * 0.9 - 500,
-       ext(ortho)[3] + height * 0.21,
+       ext(ortho)[3] + height * 0.18,
        "1 km",
        col = "white",
-       cex = 10)
+       cex = 8)
   dev.off()
   gg_grob <- ggplot() +
     draw_image(temp_file) +
@@ -247,15 +266,17 @@ plot_ortho_n_qual <- function(ortho, ortho_name){
 #                                       "Mols Bjerge")
 frederiksdal_grob <- plot_ortho_n_qual(frederiksdal_forest_ortho,
                                        "Frederiksdal")
-bornholm_grob <- plot_ortho_n_qual(bornholm_forest_ortho,
-                                   "Bornholm")
+frederiksdal_qual_grob <- plot_ortho_n_qual(frederiksdal_forest_ortho,
+                                       "Frederiksdal", qual = T)
+# bornholm_grob <- plot_ortho_n_qual(bornholm_forest_ortho,
+#                                    "Bornholm")
 
 
 # Compose plots
 
 plot_grid(main_panel,
           plot_grid(frederiksdal_grob,
-                    bornholm_grob,
+                    frederiksdal_qual_grob,
                     nrow = 2),
           ncol = 2,
           rel_widths = c(2,1)) %>%
