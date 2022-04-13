@@ -26,85 +26,85 @@ denmark <- read_sf("data/stratification/biowide_georegions/DK/DK.shp") %>%
 # Forest disturbance
 disturbance_since_2015 <- rast("data/forest_change_cs/disturbance_since_2015.tif")
 
-main_panel <- gplot(disturbance_since_2015, maxpixels = 500000) +
-  geom_sf(data = denmark, 
-          inherit.aes = F, 
-          fill = "#FAFAFA", 
-          colour = "#919191",
-          size = 1) +
-  geom_tile(aes(fill = value)) +
-  scale_fill_gradient(low = NA, high = disturbance_col,
-                      na.value = NA) +
-  annotate("text", 
-           x = ext(forest_quality)[1] + 
-             0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           y = ext(forest_quality)[3] +
-             0.9325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           label = "High Quality", 
-           colour = "black",
-           size = 14 * 0.35,
-           hjust = 0,
-           vjust = 0.5) +
-  annotate("rect", 
-           xmin = ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           xmax = 20000 + ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           ymin = ext(forest_quality)[3] +
-             0.9 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           ymax = 20000 + ext(forest_quality)[3] +
-             0.9 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           color = "black",
-           fill = high_quality_col) +
-  annotate("text", 
-           x = ext(forest_quality)[1] + 
-             0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           y = ext(forest_quality)[3] +
-             0.8325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           label = "Low Quality", 
-           colour = "black",
-           size = 14 * 0.35,
-           hjust = 0,
-           vjust = 0.5) +
-  annotate("rect", 
-           xmin = ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           xmax = 20000 + ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           ymin = ext(forest_quality)[3] +
-             0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           ymax = 20000 + ext(forest_quality)[3] +
-             0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           color = "black",
-           fill = low_quality_col) +  
-  annotate("text", 
-           x = ext(forest_quality)[1] + 
-             0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           y = ext(forest_quality)[3] +
-             0.7325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           label = "Disturbed Since 2015", 
-           colour = "black",
-           size = 14 * 0.35,
-           hjust = 0,
-           vjust = 0.5) +
-  annotate("rect", 
-           xmin = ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           xmax = 20000 + ext(forest_quality)[1] + 
-             0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
-           ymin = ext(forest_quality)[3] +
-             0.7 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           ymax = 20000 + ext(forest_quality)[3] +
-             0.7 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           color = "black",
-           fill = disturbance_col) +
-  labs(title = paste0("Disturbed High Quality Forest: 19 km²\n",
-                      "Disturbed Low Quality Forest: 54 km²")) +
-  theme_map() +
-  theme(legend.position = "none",
-        plot.margin = unit(c(0.1,0,0,0), "in"),
-        #panel.border = element_rect(colour = "red", fill = NA)
-  )
+# main_panel <- gplot(disturbance_since_2015, maxpixels = 500000) +
+#   geom_sf(data = denmark, 
+#           inherit.aes = F, 
+#           fill = "#FAFAFA", 
+#           colour = "#919191",
+#           size = 1) +
+#   geom_tile(aes(fill = value)) +
+#   scale_fill_gradient(low = NA, high = disturbance_col,
+#                       na.value = NA) +
+#   annotate("text", 
+#            x = ext(forest_quality)[1] + 
+#              0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            y = ext(forest_quality)[3] +
+#              0.9325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            label = "High Quality", 
+#            colour = "black",
+#            size = 14 * 0.35,
+#            hjust = 0,
+#            vjust = 0.5) +
+#   annotate("rect", 
+#            xmin = ext(forest_quality)[1] + 
+#              0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            xmax = 20000 + ext(forest_quality)[1] + 
+#              0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            ymin = ext(forest_quality)[3] +
+#              0.9 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            ymax = 20000 + ext(forest_quality)[3] +
+#              0.9 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            color = "black",
+#            fill = high_quality_col) +
+#   annotate("text", 
+#            x = ext(forest_quality)[1] + 
+#              0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            y = ext(forest_quality)[3] +
+#              0.8325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            label = "Low Quality", 
+#            colour = "black",
+#            size = 14 * 0.35,
+#            hjust = 0,
+#            vjust = 0.5) +
+#   annotate("rect", 
+#            xmin = ext(forest_quality)[1] + 
+#              0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            xmax = 20000 + ext(forest_quality)[1] + 
+#              0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            ymin = ext(forest_quality)[3] +
+#              0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            ymax = 20000 + ext(forest_quality)[3] +
+#              0.8 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            color = "black",
+#            fill = low_quality_col) +  
+#   annotate("text", 
+#            x = ext(forest_quality)[1] + 
+#              0.75 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            y = ext(forest_quality)[3] +
+#              0.7325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            label = "Disturbed Since 2015", 
+#            colour = "black",
+#            size = 14 * 0.35,
+#            hjust = 0,
+#            vjust = 0.5) +
+#   annotate("rect", 
+#            xmin = ext(forest_quality)[1] + 
+#              0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            xmax = 20000 + ext(forest_quality)[1] + 
+#              0.69 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+#            ymin = ext(forest_quality)[3] +
+#              0.7 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            ymax = 20000 + ext(forest_quality)[3] +
+#              0.7 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
+#            color = "black",
+#            fill = disturbance_col) +
+#   labs(title = paste0("Disturbed High Quality Forest: 19 km²\n",
+#                       "Disturbed Low Quality Forest: 54 km²")) +
+#   theme_map() +
+#   theme(legend.position = "none",
+#         plot.margin = unit(c(0.1,0,0,0), "in"),
+#         #panel.border = element_rect(colour = "red", fill = NA)
+#   )
 
 
 mols_bjerge <- st_bbox(c(xmin = 593625, ymin = 6230433, 
@@ -183,13 +183,13 @@ get_ortho <- function(bbox, area_name, scale_to = 0.5, orthos = ortho_files_2014
   }
   return(rast(paste0("data/orthophotos/", area_name, ".tif")))
 }
-mols_bjerge_forest_ortho_2014 <- get_ortho(mols_bjerge, "mols_bjerge_2014",
-                                           orthos = ortho_files_2014)
-mols_bjerge_forest_ortho_2021 <- get_ortho(mols_bjerge, "mols_bjerge_2021",
-                                           orthos = ortho_files_2021)
+# mols_bjerge_forest_ortho_2014 <- get_ortho(mols_bjerge, "mols_bjerge_2014",
+#                                            orthos = ortho_files_2014)
+# mols_bjerge_forest_ortho_2021 <- get_ortho(mols_bjerge, "mols_bjerge_2021",
+#                                            orthos = ortho_files_2021)
 
 mols_bjerge_forest_ortho_2021 <- rast("data/orthophotos/mols_bjerge_2021.tif")
-mols_bjerge_forest_ortho <- rast("data/orthophotos/mols_bjerge.tif")
+mols_bjerge_forest_ortho_2014 <- rast("data/orthophotos/mols_bjerge_2014.tif")
 
 # function to generate plot
 plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
@@ -240,7 +240,7 @@ plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
        col = "white",
        border = "white")
   text(ext(ortho)[1] + width * 0.9 - 150,
-       ext(ortho)[3] + height * 0.21,
+       ext(ortho)[3] + height * 0.19,
        "300 m",
        col = "white",
        cex = 10)
@@ -263,23 +263,25 @@ plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
 }
 
 mols_bjerge_grob_2014_qual <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
-                                                "Mols Bjerge Quality", qual = T, dist = T, 
+                                                "Forest Quality", qual = T, dist = F, 
                                                 dist_col = "#C575D9")
 
+mols_bjerge_grob_2014_dist <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
+                                                     "Disturbance", qual = F, dist = T, 
+                                                     dist_col = "#C575D9")
+
 mols_bjerge_grob_2014 <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
-                                                "Mols Bjerge Disturbance\n2014", qual = F, dist = T, 
+                                                "2014", qual = F, dist = F, 
                                                 dist_col = "#C575D9")
 
 mols_bjerge_grob_2021 <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2021,
-                                      "Mols Bjerge Disturbance\n2021", qual = F, dist = T,
+                                      "2021", qual = F, dist = F,
                                       dist_col = "#C575D9")
-plot_grid(plot_grid(mols_bjerge_grob_2014_qual,
-                    main_panel,
-                    nrow =2),
-          plot_grid(mols_bjerge_grob_2014,
-                    mols_bjerge_grob_2021,
-                    nrow = 2),
-          ncol = 2,
+plot_grid(mols_bjerge_grob_2014_qual,
+          mols_bjerge_grob_2014,
+          mols_bjerge_grob_2014_dist,
+          mols_bjerge_grob_2021,
+          nrow = 2,
           rel_widths = c(1,1)) %>%
   save_plot("docs/figures/figure_4.png", .,
             base_height = 8,
