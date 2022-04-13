@@ -46,3 +46,6 @@ vignettes/*.pdf
 /data/response_data/
 /data/basemap_forests/
 /data/forest_change_cs/
+
+# MacOS bin files
+*DS_Store
