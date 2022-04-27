@@ -15,10 +15,9 @@ library(dplyr)
 library(readxl)
 library(factoextra)
 library(ggplot2)
-library(randomforest)
 
 # Set seed for pseudo random numbers
-set.seed(2308)
+set.seed(1168)
 
 ## 2) Prepare forest training polygons ----
 
@@ -35,6 +34,12 @@ high_quality <- list.files("data/response_data/high_quality_forests/",
       polygons <- filter(polygons, tilskudsor == "Privat urørt skov")
     }
     polygons <- select(polygons, !everything())
+    # make geometries valid remove have a 10 m pixel diagonal and any overlap
+    polygons <- polygons %>% 
+      st_make_valid() %>%
+      st_buffer(-(sqrt(10^2+10^2)/2)) %>%
+      st_difference()
+    # Add polygons source 
     polygons$polygon_source <- gsub(".*/(.*)\\.shp", "\\1", shp_file)
     return(polygons)
     }) %>%
@@ -43,7 +48,73 @@ high_quality <- list.files("data/response_data/high_quality_forests/",
     polygon_source == "skov_kortlaegning_2016_2018" ~ "p15",
     polygon_source == "p25_offentligareal" ~ "p25",
     polygon_source == "aftale_natur_tinglyst" ~ "private_old_growth",
-  ))
+  )) 
+
+## The next section is to remove overlapping geometries from the high quality data
+
+# Re arrange order of dataframe so that p25 polygons are on top
+high_quality <- high_quality[order(match(high_quality$polygon_source, c("p25", "private_old_growth", "p15"))),]
+
+# add arbitary id
+high_quality$id <- paste0(high_quality$polygon_source, "_", 1:nrow(high_quality))
+# Identify polygons that overlap and which other polygon they overlap with
+high_quality$overlaps_with <- high_quality %>%
+  st_overlaps()
+high_quality <- high_quality %>%
+  mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  mutate(overlaps = n_overlaps > 0)
+# Check out stats
+high_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+
+# Clean overlap starting with the p25 polygons as they are first up
+for(poly_id in high_quality$id[high_quality$overlaps]){
+  cat("Cleaning up for", poly_id, "\n")
+  # Get polygon geometry
+  poly_geo <- high_quality %>% 
+    filter(id == poly_id)
+  overlaps_with <- high_quality %>% 
+    filter(id == poly_id) %>%
+    pull(overlaps_with) %>%
+    unlist() 
+  # Remove from geometry from all other polygons that it overlaps with
+  high_quality[overlaps_with,]$geometry <- overlaps_with %>% 
+    slice(high_quality, .) %>%
+    split(., 1:nrow(.)) %>%
+    map(function(x) st_difference(st_geometry(x), poly_geo)) %>%
+    do.call(c, .)
+  # Clean up environment
+  rm(poly_geo)
+  rm(overlaps_with)
+}
+
+# Check results
+high_quality$overlaps_with <- high_quality %>%
+  st_overlaps()
+high_quality <- high_quality %>%
+  mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  mutate(overlaps = n_overlaps > 0)
+high_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+
+# Now for some reason some polygons with a line string overlap will still remain
+# Here we do a short cut by shrinking those by 0.1 m. 
+high_quality[high_quality$overlaps,]$geometry <- high_quality %>% 
+  filter(overlaps) %>%
+  split(., 1:nrow(.)) %>%
+  map(function(x) st_buffer(x, -0.1)) %>%
+  bind_rows() %>% 
+  st_geometry()
+
+# Confirm that worked
+high_quality$overlaps_with <- high_quality %>%
+  st_overlaps()
+high_quality <- high_quality %>%
+  mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  mutate(overlaps = n_overlaps > 0)
+high_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+
+# Remove excess colums
+high_quality <- high_quality %>%
+  select(polygon_source, geometry)
 
 ## Load and prep geometries for low quality forests
 # Plantations geometries and meta data
@@ -71,17 +142,160 @@ plantations_meta <- plantations_meta %>%
   sample_n(1000)
 # Filter geometries
 plantations <- plantations %>%
+  st_make_valid() %>%
   filter(UNIKID %in% plantations_meta$Ident)
 # Set source column
 plantations$polygon_source <- "NST_plantations"
+# Remove all unwanted columns
+plantations <- select(plantations, geometry, polygon_source)
+# Buffer geometries by half a pixel diagonal
+plantations <- st_buffer(plantations, -(sqrt(10^2+10^2)/2))
 
-# Add ikke p25 geometries
-low_quality <- read_sf("data/response_data/low_quality_forests/ikke_p25/ikkeP25_skov.shp") 
-low_quality$polygon_source <- "ikke_p25"
-low_quality <- list(low_quality, 
-                    plantations) %>%
-  map(function(x) select(x, polygon_source)) %>%
-  bind_rows() 
+# Load ikke p25 geometries
+ikke_p25 <- read_sf("data/response_data/low_quality_forests/ikke_p25/ikkeP25_skov.shp") 
+ikke_p25 <- ikke_p25 %>%
+  st_make_valid() 
+ikke_p25$polygon_source <- "ikke_p25"
+# Remove all unwanted columns
+ikke_p25 <- select(ikke_p25, geometry, polygon_source)
+
+# Buffer geometries by half a pixel diagonal
+ikke_p25 <- st_buffer(ikke_p25, -(sqrt(10^2+10^2)/2))
+
+# Remove overlap between high quality and low quality polygons,
+# as well as overlap between low quality polygons
+
+# first we append the low quality polygons to the high quality data
+# we start with the ikke_p25 forest to prioritise those over the plantations
+low_quality <- bind_rows(high_quality,
+                         ikke_p25,
+                         plantations)
+
+# add a unique polygon id
+low_quality$id <- paste0(low_quality$polygon_source, "_", 1:nrow(low_quality))
+
+# Identify polygons that overlap and which other polygon they overlap with
+low_quality$overlaps_with <- low_quality %>%
+  st_overlaps()
+low_quality <- low_quality %>%
+  mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  mutate(overlaps = n_overlaps > 0)
+# Check out stats
+low_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+# # A tibble: 10 x 2
+# n_overlaps     n
+# <int> <int>
+#   1          0 17341
+# 2          1  2043
+# 3          2   314
+# 4          3    75
+# 5          4    24
+# 6          5     8
+# 7          6     5
+# 8          7     1
+# 9          8     3
+# 10         11     1
+
+# Remove overlap starting from top to bottom working only on low quality polys
+for(poly_id in low_quality$id[low_quality$overlaps]){
+  cat("Cleaning up for", poly_id, "\n")
+  # Get polygon geometry
+  poly_geo <- low_quality %>% 
+    filter(id == poly_id)
+  overlaps_with <- low_quality %>% 
+    filter(id == poly_id) %>%
+    pull(overlaps_with) %>%
+    unlist() 
+  # Remove all polygons high_quality polygons
+  overlaps_with <- overlaps_with[!(low_quality$polygon_source[overlaps_with] %in% c("p25", "private_old_growth", "p15"))]
+  # Remove from geometry from all other polygons that it overlaps with
+  if(length(overlaps_with) > 0) {
+    low_quality[overlaps_with,]$geometry <- overlaps_with %>% 
+    slice(low_quality, .) %>%
+    split(., 1:nrow(.)) %>%
+    map(function(x){
+      difference <- st_difference(st_geometry(x), poly_geo)
+      if(length(difference) == 0) difference <- st_geometry(st_buffer(poly_geo, -10^6))
+      return(difference)
+    }) %>%
+    do.call(c, .)
+  }
+  # Clean up environment
+  rm(poly_geo)
+  rm(overlaps_with)
+}
+
+# Remove empty geometries
+low_quality <- filter(low_quality, !st_is_empty(low_quality))
+
+# Check whether this worked
+low_quality$overlaps_with <- low_quality %>%
+  st_overlaps()
+low_quality <- low_quality %>%
+  mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  mutate(overlaps = n_overlaps > 0)
+# Check out stats
+low_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+# # A tibble: 10 x 2
+# n_overlaps     n
+# <int> <int>
+#   1          0 17619
+# 2          1  1805
+# 3          2   211
+# 4          3    49
+# 5          4     9
+# 6          5     7
+# 7          6     2
+# 8          7     1
+# 9          8     1
+# 10         10     1
+# -> Not bad it definitely improved it. 
+
+# The remaining overlaps are likely line overlaps. 
+# Let's see whether we can address the issue by shrinking all affected low
+# quality polygons by -0.1 m
+low_quality <- low_quality %>% 
+  filter(polygon_source %in% c("ikke_p25", "NST_plantations" )) %>%
+  filter(overlaps) %>%
+  split(., 1:nrow(.)) %>%
+  map(function(x) st_buffer(x, -0.1)) %>%
+  bind_rows() %>% 
+  bind_rows(filter(low_quality, !(polygon_source %in% c("ikke_p25", "NST_plantations" ))),
+            filter(low_quality, (polygon_source %in% c("ikke_p25", "NST_plantations" ) & !overlaps)),
+            .)
+
+# Check whether this worked
+low_quality$overlaps_with <- low_quality %>%
+  st_overlaps()
+low_quality <- low_quality %>%
+  mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  mutate(overlaps = n_overlaps > 0)
+# Check out stats
+low_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+# # A tibble: 2 x 2
+# n_overlaps     n
+# <int> <int>
+#   1          0 19703
+# 2          1     2
+# Only two more forests!
+# Check out the remaining forests
+test <- low_quality[low_quality$overlaps,]
+plot(st_geometry(test[1,]))
+plot(st_geometry(test[2,]), add = T, col = "red")
+# The forests are identical, remove the ikke_p25 forest and finalise low_quality 
+# set by removing the high quality forests
+low_quality <- filter(low_quality, id != (low_quality[low_quality$overlaps,] %>% 
+                               filter(polygon_source == "ikke_p25") %>%
+                               pull(id))) %>%
+  filter(polygon_source %in% c("ikke_p25", "NST_plantations"))
+# Remove surplus columns
+low_quality <- select(low_quality, polygon_source, geometry)
+
+
+# Final check to make sure there is no overlap
+st_overlaps(high_quality) %>% sapply(length) %>% sum()
+st_overlaps(low_quality) %>% sapply(length) %>% sum()
+st_overlaps(high_quality, low_quality) %>% sapply(length) %>% sum()
 
 # Save / load geometries
 save(high_quality, file = "data/training_data/polygon_geometries/high_quality_polys.Rda")
@@ -91,15 +305,119 @@ save(low_quality, file = "data/training_data/polygon_geometries/low_quality_poly
 
 ## 3) Generate pixel samples from forest polygons ----
 
-# get sample coordinates
-high_quality_sample_coords <- st_sample(high_quality, 100000) %>% 
+# First, if possible, sample every polygon once at random within 10 m distance 
+# from edge 
+high_quality_sample_coords <- high_quality %>%
+  split(., 1:nrow(.)) %>%
+  pblapply(st_sample, size = 1) %>%
+  do.call(c, .) %>%
   st_sf() %>%
   mutate(forest_value = "high") %>% 
-  mutate(sample_id = paste0(forest_value, "_", 1:n()))
-low_quality_sample_coords <- st_sample(low_quality, 100000) %>% 
+  mutate(sample_id = paste0(forest_value, "_", 1:n())) 
+low_quality_sample_coords <- low_quality %>%
+  split(., 1:nrow(.)) %>%
+  pblapply(st_sample, size = 1) %>%
+  do.call(c, .) %>%
   st_sf() %>%
   mutate(forest_value = "low") %>% 
-  mutate(sample_id = paste0(forest_value, "_", 1:n()))
+  mutate(sample_id = paste0(forest_value, "_", 1:n())) 
+
+# Next sample across all polygons at random to make up 30k samples
+high_quality_sample_coords_rand <- st_sample(
+  high_quality, 
+  30000 - nrow(high_quality_sample_coords)) %>% 
+  st_sf() %>%
+  mutate(forest_value = "high") %>% 
+  mutate(sample_id = paste0(forest_value, "_", nrow(high_quality_sample_coords) + 1:n())) 
+low_quality_sample_coords_rand <- st_sample(
+  low_quality, 
+  30000 - nrow(low_quality_sample_coords)) %>% 
+  st_sf() %>%
+  mutate(forest_value = "low") %>% 
+  mutate(sample_id = paste0(forest_value, "_", nrow(high_quality_sample_coords) + 1:n())) 
+
+# Load EcoDes raster to allow for checking of duplicate pixels
+dtm_10m <- rast("F:/JakobAssmann/EcoDes-DK_v1.1.0/dtm_10m/dtm_10m.vrt")
+
+# Define helper function to find duplicate pixels
+find_duplicates <- function(first_sample, second_sample = NULL){
+  # Combine samples if needed
+  if(!is.null(second_sample)){
+    both_samples <- bind_rows(first_sample, second_sample) %>% vect()
+  } else {
+    # Otherwise assign and duplicate first sample for convenience subsetting later
+    both_samples <- vect(first_sample)
+    second_sample <- first_sample
+  }
+  # Extract pixels from dtm raster to get cell ID
+  test_extract <- terra::extract(dtm_10m, both_samples, cells = T)
+  # Check whether any of the cell ids sampled are present more than twice
+  duplicates <-  
+    pbsapply(test_extract$cell, function(x) sum(test_extract$cell %in% x) > 1)
+  # Associated cell ids with sample_ids
+  duplicates <- both_samples[test_extract$ID[duplicates],]$sample_id
+  # Return subset of second sample containing only the duplicated ids
+  return(
+    filter(second_sample, 
+           sample_id %in% duplicates))
+}
+
+# Keep searching for duplicates till none are left
+
+# Dummy dataframe
+high_quality_duplicates <- data.frame(1:0)
+counter <- 1
+while(nrow(high_quality_duplicates) > 0){
+  # Status
+  cat("Removing high quality sample duplicates - round: ", counter, "\n",
+      "Duplicate samples to replace: ", nrow(high_quality_duplicates), "\n")
+  # Use helper function to find duplicates
+  high_quality_duplicates <- find_duplicates(
+    high_quality_sample_coords,
+    high_quality_sample_coords_rand)
+  # Re-extract duplicates
+  high_quality_sample_coords_rand <- st_sample(
+    high_quality, size = nrow(high_quality_duplicates)) %>% 
+    st_sf() %>%
+    mutate(forest_value = "high") %>% 
+    mutate(sample_id = high_quality_duplicates$sample_id) %>%
+    # Remove old duplicates and add replacement coordinates
+    bind_rows(filter(high_quality_sample_coords_rand,
+                     !(sample_id %in% high_quality_duplicates$sample_id),
+                     ), .)
+  counter <- counter + 1
+}
+# Merge final samples
+high_quality_sample_coords <- bind_rows(high_quality_sample_coords,
+                                        high_quality_sample_coords_rand)
+
+# Dummy dataframe
+low_quality_duplicates <- data.frame(1:0)
+counter <- 1
+while(nrow(low_quality_duplicates) > 0){
+  # Status
+  cat("Removing low quality sample duplicates - round: ", counter, "\n",
+      "Duplicate samples to replace: ", nrow(low_quality_duplicates), "\n")
+  # Use helper function to find duplicates
+  low_quality_duplicates <- find_duplicates(
+    low_quality_sample_coords,
+    low_quality_sample_coords_rand)
+  # Re-extract duplicates
+  low_quality_sample_coords_rand <- st_sample(
+    low_quality, size = nrow(low_quality_duplicates)) %>% 
+    st_sf() %>%
+    mutate(forest_value = "low") %>% 
+    mutate(sample_id = low_quality_duplicates$sample_id) %>%
+    # Remove old duplicates and add replacement coordinates
+    bind_rows(filter(low_quality_sample_coords_rand,
+                     !(sample_id %in% low_quality_duplicates$sample_id),
+    ), .)
+  counter <- counter + 1
+}
+# Merge final samples
+low_quality_sample_coords <- bind_rows(low_quality_sample_coords,
+                                        low_quality_sample_coords_rand)
+
 
 # Add polygon source
 high_quality_sample_coords$polygon_source <- st_intersects(
