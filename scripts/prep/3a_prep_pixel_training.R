@@ -15,68 +15,98 @@ library(dplyr)
 library(readxl)
 library(factoextra)
 library(ggplot2)
+library(exactextractr)
 
 # Set seed for pseudo random numbers
 set.seed(1168)
 
 ## 2) Prepare forest training polygons ----
 
-# Load geometries for high quality forests
+## High quality forests
+
+# Load and prepare geometries
 high_quality <- list.files("data/response_data/high_quality_forests/", 
                            ".shp", 
                            recursive = T,
                            full.names = T) %>%
-  # Load files and assign source column
+  # Load shapefile, then do first steps of preprocessing
   map(function(shp_file){
+    # Read file
     polygons <- read_sf(shp_file)
     # Filter old growth forests if needed (aftaler om natur)
     if(sum("tilskudsor" %in% names(polygons)) > 0){
       polygons <- filter(polygons, tilskudsor == "Privat urørt skov")
     }
+    # Remove all auxilliary data
     polygons <- select(polygons, !everything())
-    # make geometries valid remove have a 10 m pixel diagonal and any overlap
-    polygons <- polygons %>% 
+    # Clean geometries
+    polygons <- polygons %>%
+      # Make valid
       st_make_valid() %>%
-      st_buffer(-(sqrt(10^2+10^2)/2)) %>%
-      st_difference()
-    # Add polygons source 
+      # Remove a pixel diagonal from the polygons
+      st_buffer(-(sqrt(10^2+10^2))) #%>%
+      #st_difference()
+    # Add polygons source column based on the file name
     polygons$polygon_source <- gsub(".*/(.*)\\.shp", "\\1", shp_file)
+    # Return processed geometries
     return(polygons)
     }) %>%
+  # Bind geometries into one sf object
   bind_rows() %>%
+  # Clean up polygon source names
   mutate(polygon_source = case_when(
     polygon_source == "skov_kortlaegning_2016_2018" ~ "p15",
     polygon_source == "p25_offentligareal" ~ "p25",
     polygon_source == "aftale_natur_tinglyst" ~ "private_old_growth",
   )) 
 
-## The next section is to remove overlapping geometries from the high quality data
+## Remove overlap between polygon
 
-# Re arrange order of dataframe so that p25 polygons are on top
+# Re arrange order of dataframe: 1) p25, 2) private old growth, 3) p15 forests
 high_quality <- high_quality[order(match(high_quality$polygon_source, c("p25", "private_old_growth", "p15"))),]
-
 # add arbitary id
 high_quality$id <- paste0(high_quality$polygon_source, "_", 1:nrow(high_quality))
-# Identify polygons that overlap and which other polygon they overlap with
+
+# Check overlap
 high_quality$overlaps_with <- high_quality %>%
   st_overlaps()
+# Add stats for overlap
 high_quality <- high_quality %>%
+  # Number of other polygons each polygon overlaps with
   mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  # Does the polygon overlap with another one at all? T/F
   mutate(overlaps = n_overlaps > 0)
-# Check out stats
+# Print out stats
 high_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+# # A tibble: 12 x 2
+# n_overlaps     n
+# <int> <int>
+#   1          0  8930
+# 2          1   301
+# 3          2    37
+# 4          3    15
+# 5          4     7
+# 6          5     2
+# 7          6     2
+# 8          7     1
+# 9          8     2
+# 10          9     1
+# 11         10     1
+# 12         13     2
 
-# Clean overlap starting with the p25 polygons as they are first up
+# Clean overlap sequentially in order of sf, starting with the p25 polygons
 for(poly_id in high_quality$id[high_quality$overlaps]){
   cat("Cleaning up for", poly_id, "\n")
   # Get polygon geometry
   poly_geo <- high_quality %>% 
     filter(id == poly_id)
+  # Retrieve index of overlapping ploygons
   overlaps_with <- high_quality %>% 
     filter(id == poly_id) %>%
     pull(overlaps_with) %>%
     unlist() 
-  # Remove from geometry from all other polygons that it overlaps with
+  # Remove from geometry from all other polygons that it overlaps with further 
+  # down in the sf objhect
   high_quality[overlaps_with,]$geometry <- overlaps_with %>% 
     slice(high_quality, .) %>%
     split(., 1:nrow(.)) %>%
@@ -87,13 +117,24 @@ for(poly_id in high_quality$id[high_quality$overlaps]){
   rm(overlaps_with)
 }
 
-# Check results
+# Check results (same as above)
 high_quality$overlaps_with <- high_quality %>%
   st_overlaps()
 high_quality <- high_quality %>%
   mutate(n_overlaps = sapply(overlaps_with, length)) %>%
   mutate(overlaps = n_overlaps > 0)
 high_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+# # A tibble: 8 x 2
+# n_overlaps     n
+# <int> <int>
+#   1          0  9116
+# 2          1   158
+# 3          2    16
+# 4          3     6
+# 5          4     2
+# 6          5     1
+# 7          6     1
+# 8          7     1
 
 # Now for some reason some polygons with a line string overlap will still remain
 # Here we do a short cut by shrinking those by 0.1 m. 
@@ -111,16 +152,63 @@ high_quality <- high_quality %>%
   mutate(n_overlaps = sapply(overlaps_with, length)) %>%
   mutate(overlaps = n_overlaps > 0)
 high_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+# # A tibble: 2 x 2
+# n_overlaps     n
+# <int> <int>
+#   1          0  9299
+# 2          1     2
+# Good only one overlapping pair remaining. 
+test <- high_quality[high_quality$overlaps,]
+plot(st_geometry(test[1,]))
+plot(st_geometry(test[2,]), add = T, col = "red")
+rm(test)
+# The private old growth fully contains the p15 forest. Remove the latter
+high_quality <- filter(high_quality,
+                       !(overlaps & polygon_source == "p15"))
+
+# One last check:
+high_quality$overlaps_with <- high_quality %>%
+  st_overlaps()
+high_quality <- high_quality %>%
+  mutate(n_overlaps = sapply(overlaps_with, length)) %>%
+  mutate(overlaps = n_overlaps > 0)
+high_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
+
+# Check if any empty geometries ar present
+sum(st_is_empty(high_quality))
+
+# remove those
+high_quality <- filter(high_quality, !st_is_empty(high_quality))
+
+# Check whether any thing else but polygons are present
+unique(st_geometry_type(high_quality))
+
+# Great! All cleaned :)
 
 # Remove excess colums
 high_quality <- high_quality %>%
   select(polygon_source, geometry)
 
 ## Load and prep geometries for low quality forests
-# Plantations geometries and meta data
+
+# Load ikke p25 geometries
+ikke_p25 <- read_sf("data/response_data/low_quality_forests/ikke_p25/ikkeP25_skov.shp") 
+# Make geomteries valid
+ikke_p25 <- ikke_p25 %>% st_make_valid() 
+# Add a polygon source
+ikke_p25$polygon_source <- "ikke_p25"
+# Remove all unwanted columns
+ikke_p25 <- select(ikke_p25, geometry, polygon_source)
+# Buffer geometries by a pixel diagonal
+ikke_p25 <- st_buffer(ikke_p25, -(sqrt(10^2+10^2)))
+
+# Load plantation geometries
 plantations <- read_sf("data/response_data/low_quality_forests/NST_plantations/LitraPolygoner_region/LitraPolygoner_region.shp")
+# Load plantation meta data
 plantations_meta <- read_excel("data/response_data/low_quality_forests/NST_plantations/NST  2019 08012019 ber 16012020 til bios_au.xlsx") 
-# Helper function to classify age bins (given as decadal mid-points, e.g., 5, 15, 25, 35 etc.)
+
+# Helper function to classify plantation age bins
+# Note, these are given as decadal mid-points, e.g., 5, 15, 25, 35 etc.
 sort_into_age_bins <- function(Aldersklasse){
   case_when(Aldersklasse > 0 & Aldersklasse <= 5 ~ "0_to_10",  # Filters decadal mid-point 5
             Aldersklasse > 5 & Aldersklasse <= 25 ~ "10_to_30", # Filters decadal mid-points 15 and 25
@@ -129,18 +217,26 @@ sort_into_age_bins <- function(Aldersklasse){
             Aldersklasse > 65 & Aldersklasse <= 95 ~ "70_to_100", # Filters decadal mid-points 75, 85 and 95
             TRUE ~ "NA") # Everything else is set to NA
 }
-# Data cleaning
+
+# Prepare and clean plantation meta data
 plantations_meta <- plantations_meta %>%
+  # Remove unwatned columns
   select(Ident, Aldersklasse, `ANV 3`, `Allerede urørt`, Status) %>%
   filter(`ANV 3` == 0) %>% # Keep only ANV 3 values of “0” (remove everything else)
   filter(`Allerede urørt` != "Urørt") %>% # Throw out all rows with label “Urørt"
   filter(Status == "G") %>% # Keep only current plantations (status = “G”) 
+  # Remove NA values
   na.omit() %>%
+  # Sort into age bins using helper function
   mutate(age_bin = sort_into_age_bins(Aldersklasse)) %>%
+  # Remove NAs once more
   filter(age_bin != "NA") %>% # Remove all age classes not in the above categories
+  # Group tibble
   group_by(age_bin) %>%
+  # Sample each age bin 1000 times
   sample_n(1000)
-# Filter geometries
+
+# Make geometries valid and filter using the meta data
 plantations <- plantations %>%
   st_make_valid() %>%
   filter(UNIKID %in% plantations_meta$Ident)
@@ -148,25 +244,15 @@ plantations <- plantations %>%
 plantations$polygon_source <- "NST_plantations"
 # Remove all unwanted columns
 plantations <- select(plantations, geometry, polygon_source)
-# Buffer geometries by half a pixel diagonal
-plantations <- st_buffer(plantations, -(sqrt(10^2+10^2)/2))
+# Buffer geometries by a pixel diagonal
+plantations <- st_buffer(plantations, -(sqrt(10^2+10^2)))
 
-# Load ikke p25 geometries
-ikke_p25 <- read_sf("data/response_data/low_quality_forests/ikke_p25/ikkeP25_skov.shp") 
-ikke_p25 <- ikke_p25 %>%
-  st_make_valid() 
-ikke_p25$polygon_source <- "ikke_p25"
-# Remove all unwanted columns
-ikke_p25 <- select(ikke_p25, geometry, polygon_source)
 
-# Buffer geometries by half a pixel diagonal
-ikke_p25 <- st_buffer(ikke_p25, -(sqrt(10^2+10^2)/2))
-
-# Remove overlap between high quality and low quality polygons,
+# Note: Next we remove overlap between high quality and low quality polygons,
 # as well as overlap between low quality polygons
 
-# first we append the low quality polygons to the high quality data
-# we start with the ikke_p25 forest to prioritise those over the plantations
+# First we append the low quality polygons to the high quality data
+# This is so we can clean from top to bottom again
 low_quality <- bind_rows(high_quality,
                          ikke_p25,
                          plantations)
@@ -174,7 +260,7 @@ low_quality <- bind_rows(high_quality,
 # add a unique polygon id
 low_quality$id <- paste0(low_quality$polygon_source, "_", 1:nrow(low_quality))
 
-# Identify polygons that overlap and which other polygon they overlap with
+# Calculate overlap statistics (same as for high quality polygons above)
 low_quality$overlaps_with <- low_quality %>%
   st_overlaps()
 low_quality <- low_quality %>%
@@ -182,19 +268,18 @@ low_quality <- low_quality %>%
   mutate(overlaps = n_overlaps > 0)
 # Check out stats
 low_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
-# # A tibble: 10 x 2
+# # A tibble: 9 x 2
 # n_overlaps     n
 # <int> <int>
-#   1          0 17341
-# 2          1  2043
-# 3          2   314
-# 4          3    75
-# 5          4    24
-# 6          5     8
-# 7          6     5
-# 8          7     1
-# 9          8     3
-# 10         11     1
+#   1          0 17651
+# 2          1  1551
+# 3          2   219
+# 4          3    51
+# 5          4    15
+# 6          5     6
+# 7          6     2
+# 8          7     3
+# 9         11     1
 
 # Remove overlap starting from top to bottom working only on low quality polys
 for(poly_id in low_quality$id[low_quality$overlaps]){
@@ -202,11 +287,12 @@ for(poly_id in low_quality$id[low_quality$overlaps]){
   # Get polygon geometry
   poly_geo <- low_quality %>% 
     filter(id == poly_id)
+  # Get index values for polygons that overlap with the target polygon
   overlaps_with <- low_quality %>% 
     filter(id == poly_id) %>%
     pull(overlaps_with) %>%
     unlist() 
-  # Remove all polygons high_quality polygons
+  # Remove all polygons high_quality polygons to avoid double cleaning of those
   overlaps_with <- overlaps_with[!(low_quality$polygon_source[overlaps_with] %in% c("p25", "private_old_growth", "p15"))]
   # Remove from geometry from all other polygons that it overlaps with
   if(length(overlaps_with) > 0) {
@@ -215,9 +301,13 @@ for(poly_id in low_quality$id[low_quality$overlaps]){
     split(., 1:nrow(.)) %>%
     map(function(x){
       difference <- st_difference(st_geometry(x), poly_geo)
+      # sf can't handle merging certain types of empty geometries when replacing 
+      # the data, st_geometry(st_polygon()) did not work either. 
+      # However, creating an empty geometry by over-buffering seemed to work. 
       if(length(difference) == 0) difference <- st_geometry(st_buffer(poly_geo, -10^6))
       return(difference)
     }) %>%
+    # Concatenate geometries and assign
     do.call(c, .)
   }
   # Clean up environment
@@ -236,19 +326,17 @@ low_quality <- low_quality %>%
   mutate(overlaps = n_overlaps > 0)
 # Check out stats
 low_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
-# # A tibble: 10 x 2
+# A tibble: 8 x 2
 # n_overlaps     n
 # <int> <int>
-#   1          0 17619
-# 2          1  1805
-# 3          2   211
-# 4          3    49
-# 5          4     9
-# 6          5     7
+#   1          0 17277
+# 2          1  1302
+# 3          2   132
+# 4          3    28
+# 5          4     4
+# 6          5     3
 # 7          6     2
-# 8          7     1
-# 9          8     1
-# 10         10     1
+# 8         11     1
 # -> Not bad it definitely improved it. 
 
 # The remaining overlaps are likely line overlaps. 
@@ -275,27 +363,43 @@ low_quality %>% st_drop_geometry() %>% group_by(n_overlaps) %>% tally()
 # # A tibble: 2 x 2
 # n_overlaps     n
 # <int> <int>
-#   1          0 19703
+#   1          0 18747
 # 2          1     2
 # Only two more forests!
-# Check out the remaining forests
+# Let's check them out
 test <- low_quality[low_quality$overlaps,]
+test
 plot(st_geometry(test[1,]))
 plot(st_geometry(test[2,]), add = T, col = "red")
-# The forests are identical, remove the ikke_p25 forest and finalise low_quality 
-# set by removing the high quality forests
-low_quality <- filter(low_quality, id != (low_quality[low_quality$overlaps,] %>% 
+rm(test)
+
+# The forests are identical, remove the ikke_p25 forest and finalise the
+# low_quality set by removing the high quality forests
+low_quality <- filter(low_quality, !(id %in% (low_quality[low_quality$overlaps,] %>% 
                                filter(polygon_source == "ikke_p25") %>%
-                               pull(id))) %>%
+                               pull(id)))) %>%
   filter(polygon_source %in% c("ikke_p25", "NST_plantations"))
 # Remove surplus columns
 low_quality <- select(low_quality, polygon_source, geometry)
 
+# Remove empty polygons
+low_quality <- low_quality[!st_is_empty(low_quality),]
+
+# Some geometries are MULTILINESTRINGS in the low quality pologyons
+unique(st_geometry_type(low_quality))
+sum(st_geometry_type(low_quality) == "MULTILINESTRING")
+sum(st_geometry_type(low_quality) == "GEOMETRYCOLLECTION")
+# 3
+
+# ... remove those MULTILINESTRINGs and "GEOMETRYCOLLECTION"
+low_quality <- low_quality[st_geometry_type(low_quality) != "MULTILINESTRING", ]
+low_quality <- low_quality[st_geometry_type(low_quality) != "GEOMETRYCOLLECTION", ]
 
 # Final check to make sure there is no overlap
 st_overlaps(high_quality) %>% sapply(length) %>% sum()
 st_overlaps(low_quality) %>% sapply(length) %>% sum()
 st_overlaps(high_quality, low_quality) %>% sapply(length) %>% sum()
+# Great! :)
 
 # Save / load geometries
 save(high_quality, file = "data/training_data/polygon_geometries/high_quality_polys.Rda")
@@ -305,146 +409,103 @@ save(low_quality, file = "data/training_data/polygon_geometries/low_quality_poly
 
 ## 3) Generate pixel samples from forest polygons ----
 
-# First, if possible, sample every polygon once at random within 10 m distance 
-# from edge 
-high_quality_sample_coords <- high_quality %>%
-  split(., 1:nrow(.)) %>%
-  pblapply(st_sample, size = 1) %>%
-  do.call(c, .) %>%
-  st_sf() %>%
-  mutate(forest_value = "high") %>% 
-  mutate(sample_id = paste0(forest_value, "_", 1:n())) 
-low_quality_sample_coords <- low_quality %>%
-  split(., 1:nrow(.)) %>%
-  pblapply(st_sample, size = 1) %>%
-  do.call(c, .) %>%
-  st_sf() %>%
-  mutate(forest_value = "low") %>% 
-  mutate(sample_id = paste0(forest_value, "_", 1:n())) 
-
-# Next sample across all polygons at random to make up 30k samples
-high_quality_sample_coords_rand <- st_sample(
-  high_quality, 
-  30000 - nrow(high_quality_sample_coords)) %>% 
-  st_sf() %>%
-  mutate(forest_value = "high") %>% 
-  mutate(sample_id = paste0(forest_value, "_", nrow(high_quality_sample_coords) + 1:n())) 
-low_quality_sample_coords_rand <- st_sample(
-  low_quality, 
-  30000 - nrow(low_quality_sample_coords)) %>% 
-  st_sf() %>%
-  mutate(forest_value = "low") %>% 
-  mutate(sample_id = paste0(forest_value, "_", nrow(high_quality_sample_coords) + 1:n())) 
-
-# Load EcoDes raster to allow for checking of duplicate pixels
+# Load EcoDes raster to determine pixels overlapping with polygons
 dtm_10m <- rast("F:/JakobAssmann/EcoDes-DK_v1.1.0/dtm_10m/dtm_10m.vrt")
 
-# Define helper function to find duplicate pixels
-find_duplicates <- function(first_sample, second_sample = NULL){
-  # Combine samples if needed
-  if(!is.null(second_sample)){
-    both_samples <- bind_rows(first_sample, second_sample) %>% vect()
-  } else {
-    # Otherwise assign and duplicate first sample for convenience subsetting later
-    both_samples <- vect(first_sample)
-    second_sample <- first_sample
-  }
-  # Extract pixels from dtm raster to get cell ID
-  test_extract <- terra::extract(dtm_10m, both_samples, cells = T)
-  # Check whether any of the cell ids sampled are present more than twice
-  duplicates <-  
-    pbsapply(test_extract$cell, function(x) sum(test_extract$cell %in% x) > 1)
-  # Associated cell ids with sample_ids
-  duplicates <- both_samples[test_extract$ID[duplicates],]$sample_id
-  # Return subset of second sample containing only the duplicated ids
-  return(
-    filter(second_sample, 
-           sample_id %in% duplicates))
-}
+# Setting the seed again for the sampling just in case the script crashed
+set.seed(414)
 
-# Keep searching for duplicates till none are left
+# Retrieve coordinates and cell numbers of all pixels that touch the polygons
+high_quality_pixels <- exact_extract(dtm_10m, 
+                                     high_quality, 
+                                     include_xy = T, 
+                                     include_cell = T)
+low_quality_pixels <- exact_extract(dtm_10m, 
+                                     low_quality, 
+                                     include_xy = T, 
+                                     include_cell = T)
 
-# Dummy dataframe
-high_quality_duplicates <- data.frame(1:0)
-counter <- 1
-while(nrow(high_quality_duplicates) > 0){
-  # Status
-  cat("Removing high quality sample duplicates - round: ", counter, "\n",
-      "Duplicate samples to replace: ", nrow(high_quality_duplicates), "\n")
-  # Use helper function to find duplicates
-  high_quality_duplicates <- find_duplicates(
-    high_quality_sample_coords,
-    high_quality_sample_coords_rand)
-  # Re-extract duplicates
-  high_quality_sample_coords_rand <- st_sample(
-    high_quality, size = nrow(high_quality_duplicates)) %>% 
-    st_sf() %>%
-    mutate(forest_value = "high") %>% 
-    mutate(sample_id = high_quality_duplicates$sample_id) %>%
-    # Remove old duplicates and add replacement coordinates
-    bind_rows(filter(high_quality_sample_coords_rand,
-                     !(sample_id %in% high_quality_duplicates$sample_id),
-                     ), .)
-  counter <- counter + 1
-}
-# Merge final samples
-high_quality_sample_coords <- bind_rows(high_quality_sample_coords,
-                                        high_quality_sample_coords_rand)
+# Add the polygon source to each of the pixels
+high_quality_pixels <- 1:nrow(high_quality) %>%
+  pblapply(function(x){
+    pixels <- high_quality_pixels[[x]]
+    pixels$polygon_source <- high_quality[x,]$polygon_source
+    return(pixels)
+  })
+low_quality_pixels <- 1:nrow(low_quality) %>%
+  pblapply(function(x){
+    pixels <- low_quality_pixels[[x]]
+    pixels$polygon_source <- low_quality[x,]$polygon_source
+    return(pixels)
+  })
 
-# Dummy dataframe
-low_quality_duplicates <- data.frame(1:0)
-counter <- 1
-while(nrow(low_quality_duplicates) > 0){
-  # Status
-  cat("Removing low quality sample duplicates - round: ", counter, "\n",
-      "Duplicate samples to replace: ", nrow(low_quality_duplicates), "\n")
-  # Use helper function to find duplicates
-  low_quality_duplicates <- find_duplicates(
-    low_quality_sample_coords,
-    low_quality_sample_coords_rand)
-  # Re-extract duplicates
-  low_quality_sample_coords_rand <- st_sample(
-    low_quality, size = nrow(low_quality_duplicates)) %>% 
-    st_sf() %>%
-    mutate(forest_value = "low") %>% 
-    mutate(sample_id = low_quality_duplicates$sample_id) %>%
-    # Remove old duplicates and add replacement coordinates
-    bind_rows(filter(low_quality_sample_coords_rand,
-                     !(sample_id %in% low_quality_duplicates$sample_id),
-    ), .)
-  counter <- counter + 1
-}
-# Merge final samples
-low_quality_sample_coords <- bind_rows(low_quality_sample_coords,
-                                        low_quality_sample_coords_rand)
+# First sample one pixel from each polygon
+high_quality_sample_ids <- high_quality_pixels %>%
+  pbsapply(function(x) sample(x$cell, size = 1)) 
+low_quality_sample_ids <- low_quality_pixels %>%
+  pbsapply(function(x) sample(x$cell, size = 1)) 
+
+# Next bind samples into one big data frame:
+high_quality_pixels <- bind_rows(high_quality_pixels)
+low_quality_pixels <- bind_rows(low_quality_pixels)
+
+# Extract and remove pixels already sampled
+high_quality_sample <- filter(high_quality_pixels, 
+                              cell %in% high_quality_sample_ids)
+high_quality_pixels <- filter(high_quality_pixels, 
+                              !(cell %in% high_quality_sample_ids))
+low_quality_sample <- filter(low_quality_pixels, 
+                              cell %in% low_quality_sample_ids)
+low_quality_pixels <- filter(low_quality_pixels, 
+                              !(cell %in% low_quality_sample_ids))
+
+# Finally sample sample reamining pixels to make up a sample of 30k pixels
+# each:
+high_quality_sample <- sample_n(high_quality_pixels,
+                                30000 - nrow(high_quality_sample)) %>%
+  bind_rows(high_quality_sample, .)
+low_quality_sample <- sample_n(low_quality_pixels,
+                                30000 - nrow(low_quality_sample)) %>%
+  bind_rows(low_quality_sample, .)
+
+# Convert dataframes for sf objects and clean up
+high_quality_sample <- st_as_sf(high_quality_sample,
+                                coords = c("x", "y"),
+                                crs = st_crs(dtm_10m)) %>%
+  select(cell, polygon_source, geometry)
+low_quality_sample <- st_as_sf(low_quality_sample,
+                                coords = c("x", "y"),
+                                crs = st_crs(dtm_10m)) %>%
+  select(cell, polygon_source, geometry)
+
+# Add forest quality and sample id columns
+high_quality_sample <- high_quality_sample %>%
+  mutate(forest_value = "high",
+         sample_id = paste0("high_", 1:nrow(high_quality_sample)))
+low_quality_sample <- low_quality_sample %>%
+  mutate(forest_value = "low",
+         sample_id = paste0("low_", 1:nrow(low_quality_sample)))
 
 
-# Add polygon source
-high_quality_sample_coords$polygon_source <- st_intersects(
-  high_quality_sample_coords,
-  high_quality) %>%
-  sapply(function(x) high_quality$polygon_source[x[1]])
-low_quality_sample_coords$polygon_source <- st_intersects(
-  low_quality_sample_coords,
-  low_quality) %>%
-  sapply(function(x) low_quality$polygon_source[x[1]])
+# Check stats
+high_quality_sample %>%
+  st_drop_geometry() %>%
+  group_by(polygon_source) %>% 
+  tally()
+low_quality_sample %>% 
+  st_drop_geometry() %>%
+  group_by(polygon_source) %>% 
+  tally()
 
 # Save / load
-save(high_quality_sample_coords, file = "data/training_data/pixel_geometries/high_quality_pixel_sample.Rda")
-save(low_quality_sample_coords, file = "data/training_data/pixel_geometries/low_quality_pixel_sample.Rda")
+save(high_quality_sample, file = "data/training_data/pixel_geometries/high_quality_pixel_sample.Rda")
+save(low_quality_sample, file = "data/training_data/pixel_geometries/low_quality_pixel_sample.Rda")
 # load("data/training_data/pixel_geometries/high_quality_pixel_sample.Rda")
 # load("data/training_data/pixel_geometries/low_quality_pixel_sample.Rda")
 
-# transform geometries to raster ETRS89 / UTM32 
-target_crs <- st_crs(raster("F:/JakobAssmann/EcoDes-DK_v1.1.0/dtm_10m/dtm_10m_6049_684.tif"))
-high_quality_sample_coords <- high_quality_sample_coords %>%
-  st_transform(target_crs)
-low_quality_sample_coords <- low_quality_sample_coords %>%
-  st_transform(target_crs)
-
 # bind into one sf object 
-combined_sample_coords <- rbind(high_quality_sample_coords,
-                                low_quality_sample_coords)
+combined_sample_coords <- rbind(high_quality_sample,
+                                low_quality_sample)
 
 # Save / load
 save(combined_sample_coords, file = "data/training_data/pixel_geometries/combined_pixel_sample.Rda")
@@ -456,12 +517,11 @@ save(combined_sample_coords, file = "data/training_data/pixel_geometries/combine
 
 # Convert to vect (terra) for fast extraction
 combined_sample_coords <- combined_sample_coords %>%
-  as_Spatial() %>%
   vect()
 
 ## 4) Extract predictor variables for training locations ----
 
-## EcoDes-DK15 v1.1.0
+## EcoDes-DK15 v1.1.0 descriptors
 
 # Load list of Ecodes-DK variables
 ecodes_vrt <- shell("dir /b /s F:\\JakobAssmann\\EcoDes-DK_v1.1.0\\*.vrt",
@@ -485,7 +545,7 @@ extract_fun <- function(vrt_file){
   # Prepare extracted values for return as data.frame
   extractions <- data.frame(
     sample_id = combined_sample_coords$sample_id,
-    forest_value = combined_sample_coords$forest_value ,
+    forest_value = combined_sample_coords$forest_value,
     cell_values = cell_values)
   
   # Update colum column name with name of vrt files
@@ -494,7 +554,7 @@ extract_fun <- function(vrt_file){
 }
 
 # Prepare cluster
-cl <- makeCluster(30)
+cl <- makeCluster(14)
 clusterEvalQ(cl, library(terra))
 
 # Export coordinates
@@ -522,8 +582,8 @@ rm(cl)
 pixel_training_data_raw <- combined_sample %>% 
   map(function(x) dplyr::select(x, -forest_value)) %>%
   reduce(full_join, by = "sample_id") %>% 
-  full_join(rbind(high_quality_sample_coords, 
-                  low_quality_sample_coords), 
+  full_join(rbind(high_quality_sample, 
+                  low_quality_sample), 
             ., by = "sample_id")
 
 # confirm order is the same as in the combined_sample_coords vect object
@@ -533,38 +593,7 @@ head(combined_sample_coords$sample_id == pixel_training_data_raw$sample_id)
 tail(combined_sample_coords$sample_id == pixel_training_data_raw$sample_id)
 which(!(combined_sample_coords$sample_id == pixel_training_data_raw$sample_id))
 
-# ## Alex and Jakob's forest type (coniferous vs. broadleaf)
-# 
-# # Load rasters
-# forest_type_cloud <- rast("data/predictor_data/conif_vs_broadleaf/forest_type_cloud.tif")
-# forest_type_con <- rast("data/predictor_data/conif_vs_broadleaf/forest_type_con.tif")
-# forest_type_dec <- rast("data/predictor_data/conif_vs_broadleaf/forest_type_dec.tif")
-# bornholm_forest_type_cloud <- rast("data/predictor_data/conif_vs_broadleaf/bornholm_forest_type_cloud.tif")
-# bornholm_forest_type_con <- rast("data/predictor_data/conif_vs_broadleaf/bornholm_forest_type_con.tif")
-# bornholm_forest_type_dec <- rast("data/predictor_data/conif_vs_broadleaf/bornholm_forest_type_dec.tif")
-# 
-# # Extract forest type as binary variable (coniferous, deciduous and cloud)
-# pixel_training_data_raw$forest_type_cloud <- terra::extract(forest_type_cloud, combined_sample_coords)[,2]
-# pixel_training_data_raw$forest_type_con <- terra::extract(forest_type_con, combined_sample_coords)[,2]
-# pixel_training_data_raw$forest_type_dec <- terra::extract(forest_type_dec, combined_sample_coords)[,2]
-# pixel_training_data_raw$forest_type_cloud[is.nan(pixel_training_data_raw$forest_type_cloud)] <- terra::extract(bornholm_forest_type_cloud, combined_sample_coords)[is.nan(pixel_training_data_raw$forest_type_cloud),2]
-# pixel_training_data_raw$forest_type_con[is.nan(pixel_training_data_raw$forest_type_con)] <- terra::extract(bornholm_forest_type_con, combined_sample_coords)[is.nan(pixel_training_data_raw$forest_type_con),2]
-# pixel_training_data_raw$forest_type_dec[is.nan(pixel_training_data_raw$forest_type_dec)] <- terra::extract(bornholm_forest_type_dec, combined_sample_coords)[is.nan(pixel_training_data_raw$forest_type_dec),2]
-# 
-# # Check whether extractions were complete (no more NAs)
-# sum(is.na(pixel_training_data_raw$forest_type_cloud))
-# sum(is.na(pixel_training_data_raw$forest_type_con))
-# sum(is.na(pixel_training_data_raw$forest_type_dec))
-
-# ## Plant available water
-# 
-# # Load raster
-# paw_160cm <- rast("data/predictor_data/plant_available_water/paw_160cm.tif")
-# 
-# # Extract paw
-# pixel_training_data_raw$paw_160cm <- terra::extract(paw_160cm, combined_sample_coords)[,2]
-
-# Bjerreskov et al. 2021 Forest type (coniferous / decidious)
+## Bjerreskov et al. 2021 Forest type (coniferous / decidious)
 
 # Load rasters
 treetype_bjer_dec <- rast("data/predictor_data/treetype/treetype_bjer_dec.tif")
@@ -578,19 +607,7 @@ pixel_training_data_raw$treetype_bjer_con <- terra::extract(treetype_bjer_con, c
 rm(treetype_bjer_dec)
 rm(treetype_bjer_con)
 
-# ## Focal variables - Old vars
-# 
-# # Load rasters
-# a_ptv_focal_3x3 <- rast("data/predictor_data/focal_variables/old_vars/a_ptv_focal_3x3.tif")
-# canopy_height_focal_3x3 <- rast("data/predictor_data/focal_variables/old_vars/canopy_height_focal_3x3.tif")
-# normalized_z_sd_focal_3x3 <- rast("data/predictor_data/focal_variables/old_vars/normalized_z_sd_focal_3x3.tif")
-# 
-# # Extract data
-# pixel_training_data_raw$a_ptv_focal_3x3 <- terra::extract(a_ptv_focal_3x3, combined_sample_coords)[,2]
-# pixel_training_data_raw$canopy_height_focal_3x3 <- terra::extract(canopy_height_focal_3x3, combined_sample_coords)[,2]
-# pixel_training_data_raw$normalized_z_sd_focal_3x3 <- terra::extract(normalized_z_sd_focal_3x3, combined_sample_coords)[,2]
-
-## Focal variables - new vars
+## Focal variables
 
 # Get list of rasters
 focal_vars <- list.files("data/predictor_data/focal_variables/", "tif", full.names = T)
@@ -625,31 +642,55 @@ focal_vars <- pblapply(focal_vars,
 stopCluster(cl)
 rm(cl)
   
+# Merge outputs
 pixel_training_data_raw <- full_join(pixel_training_data_raw, focal_vars, by = "sample_id")
 
 ## Near surface groundwater(summer)
+
+# Load raster
 ns_groundwater_summer_utm32_10m <- rast("data/predictor_data/terraennaert_grundvand_10m/ns_groundwater_summer_utm32_10m.tif")
+
+# Extract values
 pixel_training_data_raw$ns_groundwater_summer_utm32_10m <- terra::extract(ns_groundwater_summer_utm32_10m, combined_sample_coords)[,2]
+
+# Remove raster
 rm(ns_groundwater_summer_utm32_10m)
 
 ## Terrons (Peng 2020)
+
+# Load raster
 terron_point <- rast("data/predictor_data/terron_maps/terron_point.tif")
+
+# Extract values
 pixel_training_data_raw$terron_point <- terra::extract(terron_point, combined_sample_coords)[,2]
+
+# Remove raster
 rm(terron_point)
 
 ## Soil variables from Derek / SustainScapes 
 
+# Load raster
 Clay_utm32_10m <- rast("data/predictor_data/soil_layers/Clay_utm32_10m.tif")
 Sand_utm32_10m <- rast("data/predictor_data/soil_layers/Sand_utm32_10m.tif")
 Soc_utm32_10m <- rast("data/predictor_data/soil_layers/Soc_utm32_10m.tif")
+
+# Extract values
 pixel_training_data_raw$Clay_utm32_10m <- terra::extract(Clay_utm32_10m, combined_sample_coords)[,2]
 pixel_training_data_raw$Sand_utm32_10m <- terra::extract(Sand_utm32_10m, combined_sample_coords)[,2]
 pixel_training_data_raw$Soc_utm32_10m <- terra::extract(Soc_utm32_10m, combined_sample_coords)[,2]
+
+# Remove rasters
 rm(list = c("Clay_utm32_10m", "Sand_utm32_10m", "Soc_utm32_10m"))
 
-# Foliage height diversity
+## Foliage height diversity
+
+# Load raster
 foliage_height_diversity <- rast("data/predictor_data/foliage_height_diversity/foliage_height_diversity.tif")
+
+# Extract values
 pixel_training_data_raw$foliage_height_diversity <- terra::extract(foliage_height_diversity, combined_sample_coords)[,2]
+
+# Remove raster
 rm(foliage_height_diversity)
 
 # Save intermediate backup
