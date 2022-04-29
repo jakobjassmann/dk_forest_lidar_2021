@@ -16,17 +16,27 @@ load("data/training_data/pixel_valid_biowide.Rda")
 # Set pseudo random generator seed
 set.seed(24231)
 
-# Rename and subsample for speed
+# Rename 
 train_data <- pixel_training_biowide %>% 
-  sample_n(1500) %>%
-  #sample_frac(0.5) %>%
+  # sample_n(1500) %>%
+  # #sample_frac(0.5) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
+  mutate(forest_value_bin = as.numeric(forest_value) - 1) %>%
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -forest_value)
 test_data <- pixel_valid_biowide %>% 
-  sample_n(450) %>%
-  #sample_frac(0.5) %>%
+  # sample_n(450) %>%
+  # #sample_frac(0.5) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
+  mutate(forest_value_bin = as.numeric(forest_value) - 1) %>%
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -forest_value)
 
 # Register parallel cluster
 cl <- makePSOCKcluster(30)
@@ -35,21 +45,28 @@ registerDoParallel(cl)
 
 # Optimise hyperparameters for boosted regression tree
 # 1) Determine optimum number of trees, fixing other parameters
+# Note: I do this outside caret as I found caret's interface was not
+# very helfpul for efficiently finding the right number of trees.
 tuneGrid <- expand.grid(n.trees = seq(300, 15000, 300), # Check range
                         shrinkage = 0.1, # Slow learning rate to start (range 0.001-0.3)
                         n.minobsinnode = 10, # Default value (range 5-15 common)
                         interaction.depth = 3 # Not stumps, range usually between 1-8
-                        )
+       )
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  trControl = trainControl(method = "repeatedcv", 
-                                         repeats = 5, # Increase later
-                                         classProbs = TRUE, 
-                                         summaryFunction = twoClassSummary),
+                                          repeats = 5, # Increase later
+                                          classProbs = TRUE, 
+                                          summaryFunction = twoClassSummary),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
-gbm_fit
+
+# Determine optimum number of trees: 
+plot(gbm_fit)
+gbm.perf(gbm_fit, method = "cv")
+# 2548
+
 # n.trees  ROC        Sens       Spec     
 # 300    0.8211565  0.8072020  0.6750418
 # 600    0.8301944  0.8102908  0.6871564
