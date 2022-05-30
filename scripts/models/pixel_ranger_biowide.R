@@ -16,20 +16,24 @@ load("data/training_data/pixel_valid_biowide.Rda")
 # Set pseudo random generator seed
 set.seed(24231)
 
-# Rename and subsample for speed
+# Prep data frames 
 train_data <- pixel_training_biowide %>% 
-  sample_n(1500) %>%
-  #sample_frac(0.5) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification)
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
 test_data <- pixel_valid_biowide %>% 
-  sample_n(450) %>%
-  #sample_frac(0.5) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
 
 # Register parallel cluster
-cl <- makePSOCKcluster(30)
+cl <- makePSOCKcluster(46)
 #cl <- makePSOCKcluster(16)
 registerDoParallel(cl)
 
@@ -37,15 +41,12 @@ registerDoParallel(cl)
 # 1) Determine optimum number of trees, fixing other parameters
 tuneGrid <- expand.grid(mtry = c(2:5),
                         splitrule = c("gini", "extratrees"),
-                        min.node.size = c(1, 3, 5)) # Not stumps, range usually between 1-8
-# tuneGrid <- expand.grid(mtry = 5,
-#                         splitrule = c("gini"),
-#                         min.node.size = c(1, 3)) # Not stumps, range usually between 1-8
+                        min.node.size = c(1, 3, 5, 8)) # Not stumps, range usually between 1-8
 rf_fit <- train(forest_value ~ .,
                 data = train_data,
                 method = "ranger",
                 trControl = trainControl(method = "repeatedcv", 
-                                         repeats = 5, # Increase later
+                                         repeats = 5, 
                                          classProbs = TRUE, 
                                          summaryFunction = twoClassSummary),
                 tuneGrid = tuneGrid,
