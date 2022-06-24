@@ -16,42 +16,57 @@ load("data/training_data/pixel_valid_derek.Rda")
 # Set pseudo random generator seed
 set.seed(24231)
 
-# Rename and subsample for speed
+# Prep data frames
 train_data <- pixel_training_derek %>% 
-  sample_n(1500) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
 test_data <- pixel_valid_derek %>% 
-  sample_n(450) %>%
   ungroup() %>%
-  dplyr::select(-sample_id, -biowide_region, -dereks_stratification) 
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
 
 # Register parallel cluster
-cl <- makePSOCKcluster(30)
-#cl <- makePSOCKcluster(16)
+cl <- makePSOCKcluster(46)
 registerDoParallel(cl)
 
 # Optimise hyperparameters for boosted regression tree
 # 1) Determine optimum number of trees, fixing other parameters
-tuneGrid <- expand.grid(n.trees = seq(200,10000, 300), # Check range
+tuneGrid <- expand.grid(n.trees = seq(300, 10000, 300), # Check range
                         shrinkage = 0.1, # Slow learning rate to start (range 0.001-0.3)
                         n.minobsinnode = 10, # Default value (range 5-15 common)
                         interaction.depth = 3 # Not stumps, range usually between 1-8
-                        )
+)
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  trControl = trainControl(method = "repeatedcv", 
-                                         repeats = 5, # Increase later
-                                         classProbs = TRUE, 
-                                         summaryFunction = twoClassSummary,
-                                         verboseIter = TRUE),
+                                          repeats = 5, # Increase later
+                                          classProbs = TRUE, 
+                                          summaryFunction = twoClassSummary,
+                                          selectionFunction = function(
+                                            x,
+                                            metric, 
+                                            maximize){
+                                            tolerance(x, metric, tol = 0.5, maximize)
+                                          }),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
+
+# Determine optimum number of trees: 
 gbm_fit
-# Optimal n.trees = 1100
+plot(gbm_fit)
+summary(gbm_fit)
+# 5700 is optimal
+
 # 2) Tune learning rate
-tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
+tuneGrid <- expand.grid(n.trees = c(3700, 5700, 8700), # 1100 optimal value determined above, plust some scope
                         shrinkage = c(0.3, 0.1, 0.05, 0.01, 0.005), 
                         n.minobsinnode = 10, # Default value (range 5-15 common)
                         interaction.depth = 3 # Not stumps, range usually between 1-8
@@ -63,32 +78,19 @@ gbm_fit <- train(forest_value ~ .,
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
                                           summaryFunction = twoClassSummary,
-                                          verboseIter = TRUE),
+                                          selectionFunction = function(
+                                            x,
+                                            metric, 
+                                            maximize){
+                                            tolerance(x, metric, tol = 0.5, maximize)
+                                          }),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
-gbm_fit # 0.05 seems to be a good learning rate
-
-# Dig a bit deeper optimising the learning rate
-tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
-                        shrinkage = seq(0.01, 0.1, 0.01), # search around 0.05
-                        n.minobsinnode = 10, # Default value (range 5-15 common)
-                        interaction.depth = 3 # Not stumps, range usually between 1-8
-)
-gbm_fit <- train(forest_value ~ .,
-                 data = train_data,
-                 method = "gbm",
-                 trControl = trainControl(method = "repeatedcv", 
-                                          repeats = 5, # Increase later
-                                          classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary,
-                                          verboseIter = TRUE),
-                 tuneGrid = tuneGrid,
-                 metric = "ROC")
-gbm_fit # best shrinkage = 0.06
+gbm_fit # 0.1 seems to be a good learning rate, 5700 seems to be still the most optimal n trees
 
 # Tune tree parameters
-tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
-                        shrinkage = 0.06, # 0.06 optimal
+tuneGrid <- expand.grid(n.trees = 5700, # optimal value determined above
+                        shrinkage = 0.1, # optimal value determined above
                         n.minobsinnode = c(5,10,15), # Default value (range 5-15 common)
                         interaction.depth = c(2,3,5,8) # Not stumps, range usually between 1-8
 )
@@ -99,47 +101,87 @@ gbm_fit <- train(forest_value ~ .,
                                           repeats = 5, # Increase later
                                           classProbs = TRUE, 
                                           summaryFunction = twoClassSummary,
-                                          verboseIter = TRUE),
+                                          selectionFunction = function(
+                                            x,
+                                            metric, 
+                                            maximize){
+                                            tolerance(x, metric, tol = 0.5, maximize)
+                                          }),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
-gbm_fit # => optimal values (15 and 8) at upper extreme let's try some more
+gbm_fit # => optimal values (interaction.depth = 8 and n.minobsinnode = 5) at extremes let's try some more
 
 # Tune tree parameters again
-tuneGrid <- expand.grid(n.trees = 1100, # 1100 optimal value determined above
-                        shrinkage = 0.06, # 0.06 optimal
-                        n.minobsinnode = c(10,15,20), # Default value (range 5-15 common)
+tuneGrid <- expand.grid(n.trees = 5700, # optimal value determined above
+                        shrinkage = 0.1, # optimal
+                        n.minobsinnode = c(3,5,7), # Default value (range 5-15 common)
                         interaction.depth = c(6,8,10) # Not stumps, range usually between 1-8
 )
 gbm_fit <- train(forest_value ~ .,
                  data = train_data,
                  method = "gbm",
                  trControl = trainControl(method = "repeatedcv", 
-                                          repeats = 5, # Increase later
+                                          repeats = 5, 
+                                          classProbs = TRUE, 
+                                          summaryFunction = twoClassSummary,
+                                          selectionFunction = function(
+                                            x,
+                                            metric, 
+                                            maximize){
+                                            tolerance(x, metric, tol = 0.5, maximize)
+                                          }),
+                 tuneGrid = tuneGrid,
+                 metric = "ROC")
+gbm_fit 
+# Final fit n.trees = 5700, interaction.depth = 8, shrinkage = 0.1 and n.minobsinnode = 3.
+
+# Check last final time whether adding more trees with final other parameters
+# is worth it. 
+tuneGrid <- expand.grid(n.trees = c(5700, 6700, 7700, 8700, 9700), # to be tested
+                        shrinkage = 0.1, # optimal
+                        n.minobsinnode = 3, # optimal
+                        interaction.depth = 8 # optimal
+)
+gbm_fit <- train(forest_value ~ .,
+                 data = train_data,
+                 method = "gbm",
+                 preProc = c("center", "scale"),
+                 trControl = trainControl(method = "repeatedcv", 
+                                          repeats = 5, 
+                                          classProbs = TRUE, 
+                                          summaryFunction = twoClassSummary,
+                                          selectionFunction = function(
+                                            x,
+                                            metric, 
+                                            maximize){
+                                            tolerance(x, metric, tol = 0.5, maximize)
+                                          }),
+                 tuneGrid = tuneGrid,
+                 metric = "ROC")
+gbm_fit 
+plot(gbm_fit)
+# Looks like the selected parameters are indeed best simplest model.
+# n.trees = 5700, interaction.depth = 8, shrinkage = 0.1 and n.minobsinnode = 3.
+
+
+# Fit final model with 10 fold cross validation
+tuneGrid <- expand.grid(n.trees = 5700, # optimal 
+                        shrinkage = 0.1, # optimal
+                        n.minobsinnode = 3, # optimal
+                        interaction.depth = 8 # optimal
+)
+gbm_fit <- train(forest_value ~ .,
+                 data = train_data,
+                 method = "gbm",
+                 preProc = c("center", "scale"),
+                 trControl = trainControl(method = "repeatedcv", 
+                                          repeats = 10, 
                                           classProbs = TRUE, 
                                           summaryFunction = twoClassSummary,
                                           verboseIter = TRUE),
                  tuneGrid = tuneGrid,
                  metric = "ROC")
-gbm_fit #15 n.minobsinode is optimal, 
-# while additional gain from increasing interactoin.depth is minmal leave at 10
-
-
-# Fit final model with 10 fold cross validaiton
-tuneGrid <- expand.grid(n.trees = 1500, # 1100 optimal value determined above
-                        shrinkage = 0.06, # 0.06 optimal
-                        n.minobsinnode = 15, # Default value (range 5-15 common)
-                        interaction.depth = 10 # Not stumps, range usually between 1-8
-)
-gbm_fit <- train(forest_value ~ .,
-                 data = train_data,
-                 method = "gbm",
-                 trControl = trainControl(method = "repeatedcv", 
-                                          repeats = 10, 
-                                          classProbs = TRUE, 
-                                          summaryFunction = twoClassSummary),
-                 tuneGrid = tuneGrid,
-                 metric = "ROC")
-# Save final model
+# Save final model# Save final model
 save(gbm_fit, file = "data/models/final_gbm_model_pixel_derek.Rda")
 
 # Stop cluster
