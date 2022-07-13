@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-    
+
     <!--- Leaflet CSS stylesheet (needs to be loaded before leaflet js) --->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
 
     <!--- Leaflet js --->
 	<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
-    
+
     <!--- Georaster js --->
     <script src="https://unpkg.com/georaster"></script>
-    
+
     <!--- Georaster-Layer-For-leaflet js --->
 	<script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
-    
+
     <!--- Leaflet AJAX js for easy remote loading of GeoJSON geometries --->
     <script src="js/leaflet.ajax.min.js"></script>
-    
+
     <!--- Leaflet Mouse Coordinates https://github.com/ardhi/Leaflet.MousePosition --->
     <link rel="stylesheet" href="js/L.Control.MousePosition.css"></link>
     <script src="js/L.Control.MousePosition.js"></script>
-    
-    <!---  File specific CSS styles ---> 
+
+    <!---  File specific CSS styles --->
 	<style>
         /* Overall map style */
         #map {position: absolute; top: 0; bottom: 0; left: 0; right: 0;}
@@ -34,8 +34,8 @@
             border-radius: 0;
         }
 
-        .leaflet-control-layers:before{ 
-            content:"Layer Control"; 
+        .leaflet-control-layers:before{
+            content:"Layer Control";
             color:#777;
             font: normal normal bold 16px Arial, Helvetica, sans-serif;
             padding: 6px 4px;
@@ -90,7 +90,7 @@
         // Load base tiles ----
 
         // OpenStreetMap
-        var OpenStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
+        var OpenStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         });
@@ -104,7 +104,7 @@
 
         // Initiate leaflet ----
         // This needs to be done before loading the Georasters
-        var map = L.map('map', { 
+        var map = L.map('map', {
             center: [56.25, 12], // Centered on Denmark
             zoom: 7, // Worked well
             layers: [CartoDB_DarkMatter] // Default layers
@@ -144,20 +144,20 @@
             //"<h4>Data Types</h4>" : "",
             "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Training Polygons</strong></span>": trainingPolys
         };
-        
+
         //  Create layercontrol object
         var layerControl = L.control.layers(baseMaps, overlayMaps, {collapsed:false});
 
         // Load GeoRasters ----
 
         // Set URLs to COG files
-        var gbm_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg3857_v0.1.0.tif";
-        var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v0.1.0.tif";
+        var gbm_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg3857_v0.9.0.tif";
+        var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v0.9.0.tif";
         var disturbance_since_2015 = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.1.0.tif";
 
-        // Cornelius disturbances 
+        // Cornelius disturbances
         var disturbance_since_2015_promise = parseGeoraster(disturbance_since_2015).then(georaster => {
-            
+
             // Generate GeoRasterLayer for disturbances (
             var disturbance_2015 = new GeoRasterLayer({
                 georaster,
@@ -170,7 +170,7 @@
                         return "Purple";// "RebeccaPurple";
                     } else {
                         return undefined;
-                    }   
+                    }
                 }
             });
 
@@ -179,7 +179,7 @@
 
         // Ranger projections
         var ranger_projections_promise = parseGeoraster(ranger_projections_file).then(georaster => {
-            
+
             // GeoRasterLayer for range_projections (Band 1)
             var ranger_projections = new GeoRasterLayer({
                 georaster,
@@ -189,11 +189,11 @@
                 pixelValuesToColorFn: function(pixelValues){
                     var pixelValue = pixelValues[0]; // Choose first band!
                     if (pixelValue >= 1 && pixelValue <= 2){
-                        var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod"); 
+                        var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
                         return colour;
                     } else {
                         return undefined;
-                    }   
+                    }
                 }
             });
 
@@ -202,7 +202,7 @@
 
         // GBM projections
         var gbm_projections_promise = parseGeoraster(gbm_projections_file).then(georaster => {
-            
+
             // GeoRasterLayer for gbm_projections (Band 1)
             var gbm_projections = new GeoRasterLayer({
                 georaster,
@@ -210,15 +210,15 @@
                 resolution: 128, // 128 seems to be a good compromise for now
                 pane: "gbm_projections",
                 pixelValuesToColorFn: function(pixelValues){
-                    var pixelValue = pixelValues[0]; 
+                    var pixelValue = pixelValues[0];
                     if (pixelValue >= 1 && pixelValue <= 2){
-                        var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod"); 
+                        var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
                         return colour;
                     } else {
                         return undefined;
-                    }   
+                    }
                 }
-            });    
+            });
 
             return gbm_projections;
         });
@@ -236,32 +236,32 @@
             // Add layers to map / control
 
             // The order here will determine the order in the control element, not in the map
-            // For this see map panes defined above. 
+            // For this see map panes defined above.
 
             disturbance_since_2015_promise.then(disturbance_2015 => {
-                
+
                 // Add layer to layer control (but not to map)
                 layerControl.addOverlay(
-                    disturbance_2015, 
+                    disturbance_2015,
                     "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Disturbance (2015 - 2020)</strong></span>").addTo(map);
             });
-        
+
             ranger_projections_promise.then(ranger_projections => {
-            
+
                 // Add layer to layer control (but not to map)
                 layerControl.addOverlay(
-                        ranger_projections, 
+                        ranger_projections,
                         "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Random Forest Projections</strong></span>").addTo(map);
             });
-            
+
             gbm_projections_promise.then(gbm_projections => {
 
                 // Add layer to map
                 gbm_projections.addTo(map);
-            
-                // Add layer to layer control 
+
+                // Add layer to layer control
                 layerControl.addOverlay(
-                    gbm_projections, 
+                    gbm_projections,
                     "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections</strong> (default)</span>");
             });
 
