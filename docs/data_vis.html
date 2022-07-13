@@ -122,7 +122,7 @@
         // Load training polygons ----
 
         // Training polygons layer
-        var trainingPolysFile = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/training_polygons.geojson"
+        var trainingPolysFile = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/training_polygons_v0.9.0.geojson"
         var trainingPolys = new L.GeoJSON.AJAX(trainingPolysFile, {
             pane: "trainingPolys",
             style: function(feature) {
@@ -153,7 +153,7 @@
         // Set URLs to COG files
         var gbm_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg3857_v0.9.0.tif";
         var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v0.9.0.tif";
-        var disturbance_since_2015 = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.1.0.tif";
+        var disturbance_since_2015 = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.9.0.tif";
 
         // Cornelius disturbances
         var disturbance_since_2015_promise = parseGeoraster(disturbance_since_2015).then(georaster => {
@@ -296,7 +296,7 @@
         var title = L.control({ position: "bottomleft" });
         title.onAdd = function(map) {
                 var div = L.DomUtil.create("div", "legend");
-                div.innerHTML += "<h4>Denmark Forest Quality v0.1.0 (beta)</h4>";
+                div.innerHTML += "<h4>Denmark Forest Quality v0.9.0</h4>";
                 div.innerHTML += '<span style="margin: 0 0 0 14px;">Assmann et al. (in prep).<br></span>';
                 div.innerHTML += '<span style="margin: 0 0 0 14px;">Contact: <a href="mailto:j.assmann@bio.au.dk">j.assmann@bio.au.dk</a><br></span>';
                 div.innerHTML += "<span style='margin: 0 14px 0 14px'> <img src='au_logo.png' style='width: 125; height:25px;'>";
