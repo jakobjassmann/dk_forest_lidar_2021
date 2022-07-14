@@ -34,6 +34,9 @@ disturbance_since_2015 <- crop(disturbance_since_2015, forest_mask)
 disturbance_since_2015 <- extend(disturbance_since_2015, forest_mask)
 disturbance_since_2015 <- mask(disturbance_since_2015, forest_mask)
 
+# Crop extend to match gbm_biowide
+disturbance_since_2015 <- crop(disturbance_since_2015, gbm_biowide)
+
 # Test masking procedure
 test_ext <- ext(490470,
                 491360, 
