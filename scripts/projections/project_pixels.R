@@ -157,6 +157,8 @@ project_model <- function(model_fit,
   cat("Gathering additional predictor layers ...\n")
   pred_files <- list.files("data/predictor_data/", "tif", recursive = T, 
                            full.names = T)
+  # remove dublicate soil layers, keeping only the gap filled ones
+  pred_files <- pred_files[!grepl(".*soil_layers/[CS].*", pred_files)]
   pred_files <- sapply(pred_files, 
                        function(x) gsub(".*/(.*)\\.tif", "\\1", x) %in% pred_vars) %>%
     pred_files[.]
