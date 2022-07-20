@@ -153,7 +153,7 @@ ranger_projections_100m <- aggregate(ranger_projections, fact = 10,
           overwrite = T)
 gbm_projections_100m <- aggregate(gbm_projections, fact = 10,
           fun = forest_qual_by_threshold,
-          threshold = gbm_projections,
+          threshold = gbm_thresh,
           filename = "data/projections/gbm_biowide/forest_quality_gbm_biowide_100m.tif",
           cores = 46, 
           overwrite = T)
@@ -174,9 +174,18 @@ gbm_projections_100m_downsampled <- resample(gbm_projections_100m,
                                              method = "near",
                                              filename = "data/projections/gbm_biowide/forest_quality_gbm_biowide_100m_downsampled.tif")
 
-forest_mask <- rast("data/basemap_forests/forest_mask.tif")
-ranger_projections_100m_downsampled <- mask(ranger_projections_100m_downsampled, forest_mask)
-gbm_projections_100m_downsampled <- mask(gbm_projections_100m_downsampled, forest_mask)
+# # Apply the forest mask 
+# forest_mask <- rast("data/basemap_forests/forest_mask.tif")
+# forest_mask <- crop(forest_mask, ranger_projections_100m_downsampled)
+# ranger_projections_100m_downsampled <- mask(ranger_projections_100m_downsampled, forest_mask)
+# gbm_projections_100m_downsampled <- mask(gbm_projections_100m_downsampled, forest_mask)
+# 
+# writeRaster(ranger_projections_100m_downsampled,
+#             "data/projections/ranger_biowide/forest_quality_ranger_biowide_100m_downsampled.tif",
+#             overwrite = T)
+# writeRaster(gbm_projections_100m_downsampled,
+#             "data/projections/gbm_biowide/forest_quality_gbm_biowide_100m_downsampled.tif",
+#             overwrite = T)
 
 # Generate cloud optimised GeoTiffs
 gdal_utils("warp",
