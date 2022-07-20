@@ -114,7 +114,9 @@
         L.control.mousePosition().addTo(map);
 
         // create map panes to control order of overlays
+				map.createPane('gbm_projections_agg');
         map.createPane('gbm_projections');
+				map.createPane('ranger_projections_agg');
         map.createPane('ranger_projections');
         map.createPane('disturbance_2015');
         map.createPane('trainingPolys');
@@ -153,6 +155,8 @@
         // Set URLs to COG files
         var gbm_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg3857_v0.9.1.tif";
         var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v0.9.1.tif";
+				var gbm_projections_agg_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_100m_downsampled_cog_epsg3857_v0.9.1.tif";
+        var ranger_projections_agg_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_100m_downsampled_cog_epsg3857_v0.9.1.tif";
         var disturbance_since_2015 = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.9.1.tif";
 
         // Cornelius disturbances
@@ -177,6 +181,29 @@
             return disturbance_2015;
         });
 
+				// Ranger projections aggregate
+				var ranger_projections_agg_promise = parseGeoraster(ranger_projections_agg_file).then(georaster => {
+
+						// GeoRasterLayer for range_projections (Band 1)
+						var ranger_projections_agg = new GeoRasterLayer({
+								georaster,
+								opacity: 1,//0.75,
+								resolution: 128, // 128 seems to be a good compromise for now
+								pane: "ranger_projections_agg",
+								pixelValuesToColorFn: function(pixelValues){
+										var pixelValue = pixelValues[0]; // Choose first band!
+										if (pixelValue >= 1 && pixelValue <= 2){
+												var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
+												return colour;
+										} else {
+												return undefined;
+										}
+								}
+						});
+
+						return ranger_projections_agg;
+				});
+
         // Ranger projections
         var ranger_projections_promise = parseGeoraster(ranger_projections_file).then(georaster => {
 
@@ -199,6 +226,29 @@
 
             return ranger_projections;
         });
+
+				// GBM projections aggregate
+				var gbm_projections_agg_promise = parseGeoraster(gbm_projections_agg_file).then(georaster => {
+
+						// GeoRasterLayer for gbm_projections (Band 1)
+						var gbm_projections_agg = new GeoRasterLayer({
+								georaster,
+								opacity: 1,//0.75,
+								resolution: 128, // 128 seems to be a good compromise for now
+								pane: "gbm_projections_agg",
+								pixelValuesToColorFn: function(pixelValues){
+										var pixelValue = pixelValues[0];
+										if (pixelValue >= 1 && pixelValue <= 2){
+												var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
+												return colour;
+										} else {
+												return undefined;
+										}
+								}
+						});
+
+						return gbm_projections_agg;
+				});
 
         // GBM projections
         var gbm_projections_promise = parseGeoraster(gbm_projections_file).then(georaster => {
@@ -229,7 +279,9 @@
         async function add_geo_rasters(){
 
             // Wait for promises to be evaluated
+						await gbm_projections_agg_promise;
             await gbm_projections_promise;
+						await ranger_projections_agg_promise;
             await ranger_projections_promise;
             await disturbance_since_2015_promise;
 
@@ -246,12 +298,20 @@
                     "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Disturbance (2015 - 2020)</strong></span>").addTo(map);
             });
 
-            ranger_projections_promise.then(ranger_projections => {
+						ranger_projections_promise.then(ranger_projections => {
 
                 // Add layer to layer control (but not to map)
                 layerControl.addOverlay(
                         ranger_projections,
                         "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Random Forest Projections</strong></span>").addTo(map);
+            });
+
+						ranger_projections_agg_promise.then(ranger_projections_agg => {
+
+                // Add layer to layer control (but not to map)
+                layerControl.addOverlay(
+                        ranger_projections_agg,
+                        "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Random Forest Projections (100 m aggregate)</strong></span>").addTo(map);
             });
 
             gbm_projections_promise.then(gbm_projections => {
@@ -264,6 +324,14 @@
                     gbm_projections,
                     "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections</strong> (default)</span>");
             });
+
+						gbm_projections_agg_promise.then(gbm_projections_agg => {
+
+								// Add layer to layer control (but not to map)
+								layerControl.addOverlay(
+												gbm_projections_agg,
+												"<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections (100 m aggregate)</strong></span>").addTo(map);
+						});
 
             // Finally add layer control object to map
             layerControl.addTo(map);
