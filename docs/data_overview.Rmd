@@ -115,11 +115,11 @@ were a 250 m x 250 m pixel overlapped with a water body. This became a problem w
 extrapolating the models to the nationwide extent, as the finer grain size of our maps
 introduced more detailed shore lines. We therefore had 10 m x 10 m land pixels for which
 no soil data was available. To address this problem we gap-filled the original 
-250 m x 250 m soil data. All pixels that were NA with at least one neighbouring cell
-that was not NA were filled with the mean of all neighbouring cells that are not NA. 
+250 m x 250 m soil data. All pixels that were NA and had at least one neighbouring cell
+that was not NA were filled with the mean of all neighbouring cells that were not NA. 
 The raster was then projected to the EcoDEs-DK grid with 10 m grain size and
 only used for generating the nationwide forest quality maps from the trained
-models, but not for training of the models. Forest Quality predictions close to some
+models, but not for training of the models themselves. Forest Quality predictions close to some
 shores may therefore contain some error, but we are confident that this error is
 very small due to the inherently high autocorrelation of the soil variables. 
 
