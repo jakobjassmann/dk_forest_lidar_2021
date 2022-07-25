@@ -19,7 +19,7 @@ training dataset that forms the base of our forest quality models for Denmark.
 
 These annotations are vector polygons of forests in Denmark that are of known 
 "high" or "low" quality. We used these polygons to generate a training dataset 
-of 200k pixels based on the 10 m grid of Denmark that is used by our models. 
+of 30k pixels based on the 10 m grid of Denmark that is used by our models. 
 The grid is defined by the EcoDes-DK15 dataset. A brief description on how the
 final pixel training dataset was generated from the forest 
 annotations can be found at the end of this document. 
