@@ -213,34 +213,34 @@ plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
   }
   if(dist == T){
     polys(dist_crop,
-         #col =  "#00000000",
+         col =  "#00000000",
          density = 5,
          alpha = 1,
-         lwd = 5,
-         col = dist_col,
+         lwd = 10,
+         #col = dist_col,
          border = dist_col)
-    polys(dist_crop,
-          #col =  "#00000000",
-          density = 5,
-          alpha = 1,
-          lwd = 2,
-          col = dist_col,
-          border = NA)
+    # polys(dist_crop,
+    #       #col =  "#00000000",
+    #       density = 5,
+    #       alpha = 1,
+    #       lwd = 2,
+    #       col = dist_col,
+    #       border = NA)
   }
   text(ext(ortho)[1] + width * 0.04,
-       ext(ortho)[3] + height * 0.88,
+       ext(ortho)[3] + height * 0.90,
        ortho_name,
        adj = 0,
        col = "white",
        cex = 10)
   rect(ext(ortho)[1] + width * 0.9 - 300,
-       ext(ortho)[3] + height * 0.1,
+       ext(ortho)[3] + height * 0.08,
        ext(ortho)[1] + width * 0.9,
-       ext(ortho)[3] + height * 0.1 + height * 0.025,
+       ext(ortho)[3] + height * 0.08 + height * 0.025,
        col = "white",
        border = "white")
   text(ext(ortho)[1] + width * 0.9 - 150,
-       ext(ortho)[3] + height * 0.19,
+       ext(ortho)[3] + height * 0.17,
        "300 m",
        col = "white",
        cex = 10)
@@ -266,21 +266,21 @@ mols_bjerge_grob_2014_qual <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_20
                                                 "Forest Quality", qual = T, dist = F, 
                                                 dist_col = "#C575D9")
 
-mols_bjerge_grob_2014_dist <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
+mols_bjerge_grob_2021_dist <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2021,
                                                      "Disturbance", qual = F, dist = T, 
                                                      dist_col = "#C575D9")
 
 mols_bjerge_grob_2014 <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
-                                                "2014", qual = F, dist = F, 
+                                                "2014 Summer", qual = F, dist = F, 
                                                 dist_col = "#C575D9")
 
 mols_bjerge_grob_2021 <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2021,
-                                      "2021", qual = F, dist = F,
+                                      "2021 Spring", qual = F, dist = F,
                                       dist_col = "#C575D9")
-plot_grid(mols_bjerge_grob_2014_qual,
-          mols_bjerge_grob_2014,
-          mols_bjerge_grob_2014_dist,
+plot_grid(mols_bjerge_grob_2014,
+          mols_bjerge_grob_2014_qual,
           mols_bjerge_grob_2021,
+          mols_bjerge_grob_2021_dist,
           nrow = 2,
           rel_widths = c(1,1)) %>%
   save_plot("docs/figures/figure_4.png", .,

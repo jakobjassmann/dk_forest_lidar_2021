@@ -236,7 +236,7 @@ main_panel <- ggplot() +
            crs = st_crs(biowide_regions),
            xlim = main_panel_xlim,
            ylim = main_panel_ylim) +
-  labs(title = "Best Model - Overall Performance",
+  labs(title = "Overall Performance - Best Model: Random Forest",
        subtitle = paste0(
          "Accuracy: ", round(performance_overall$overall["Accuracy"], 2), 
          "\nSensitivity: ", round(performance_overall$byClass["Sensitivity"], 2),
@@ -246,7 +246,7 @@ main_panel <- ggplot() +
              0.63 * main_panel_width,
            y = 11000 + main_panel_ylim[1] +
              1.13 * main_panel_height,
-           label = "High Quality Training Pixels", 
+           label = "Training: High Quality Pixels", 
            colour = "black",
            size = 14 * 0.35,
            hjust = 0,
@@ -267,7 +267,7 @@ main_panel <- ggplot() +
              0.63 * main_panel_width,
            y = 11000 + main_panel_ylim[1] +
              1.08 * main_panel_height,
-           label = "Low Quality Training Pixels", 
+           label = "Training: Low Quality Pixels", 
            colour = "black",
            size = 14 * 0.35,
            hjust = 0,
