@@ -19,7 +19,7 @@ training dataset that forms the base of our forest quality models for Denmark.
 
 These annotations are vector polygons of forests in Denmark that are of known 
 "high" or "low" quality. We used these polygons to generate a training dataset 
-of 30k pixels based on the 10 m grid of Denmark that is used by our models. 
+of 60k pixels based on the 10 m grid of Denmark that is used by our models. 
 The grid is defined by the EcoDes-DK15 dataset. A brief description on how the
 final pixel training dataset was generated from the forest 
 annotations can be found at the end of this document. 
@@ -105,20 +105,51 @@ Number of forests: 4849.
 
 ---
 
+## Cleaning and preparation of geometries
+
+We observed some overlap between the assembled annotations for high and low
+quality forests, both duplicate mappings within each category, but also some
+duplicate mapping of parts of forests as high and low quality. These inaccuracies
+were expected given the extent of the dataset and the fact that it was assembled
+from multiple sources. To address the issue we carried out a systematic cleaning
+of the geometries (fully reproducible through our source code). 
+
+First, we removed internal overlap within the high quality geometries. For this
+we iteratively removed all internal overlap starting with the p25 forests (internally sorted in arbitary order^), followed 
+by the private old growth and lastly the p15 forests. We also buffered the geometries,
+using a negative buffer of 10 cm to avoid line-overlaps due to geometric inaccuracies. Finally, we removed one
+remaining p15 forest that failed to be filtered out. 
+
+Second, we removed all internal overlap within the low quality geometries, taking
+the same approach as for the high quality geometries except working fully in an arbitrary order. 
+While doing that we also checked for overlap with any high quality geometries and 
+if that was the case removed those. We also buffered the geometries,
+using a negative buffer of 10 cm to avoid line-overlaps due to geometric inaccuracies.
+Finally, we reomved one remaining ikke_p25 forest that was dublicated in the dataset. 
+
+The resulting dataset consists of two type of forest annotations (8915 high and 9720 low quality polygons)
+with no internal overlap within or between categories. 
+
+---
+
 ## Pixel training dataset 
 
 ### Pixel sampling
 
-We used the forest annotations (9400 high quality forests and 10697 low
-quality forests) to generate a sample of 200k pixels based on the EcoDes-DK14 grid
+We used the forest annotations (8915 high quality forests and 9720 low
+quality forests) to generate a sample of 60k pixels based on the EcoDes-DK14 grid
 to train our forest quality models. 
 
 The EcoDes-DK15 dataset uses a version of the Danish national grid that divides 
 terrestrial Denmark into 10 m x 10 m cells / pixels (UTM32). 
-For the training dataset we drew a sample of 100k pixels each from within 
+For the training dataset we drew a sample of 30k pixels each from within 
 the high quality and the low quality forest polygons. Specifically, the sample 
-was based on the EcoDes-DK15 "dtm10_m" descriptor raster). The sample was drawn 
-completely at random.
+was based on the EcoDes-DK15 "dtm10_m" descriptor raster). The sample was drawn
+in the following fashion: First, we drew a random pixel from within each forest 
+polygon (high or low), we then filled in the missing number of pixels to make up 
+30k for each forest quality class (high or low). The filing step was done completely at
+random, drawing from all remaining pixels available per class. The final dataset of pixels
+therefore contained 30k unique pixels from each class. 
 
 ``` {r training_data_map, echo = FALSE, cache = TRUE}
 # Load pixel sample
@@ -141,7 +172,7 @@ ggplot() +
   theme_void()
 ```
 
-Note, that because of the sampling scheme multiple pixels will be drawn from the 
+Note, that because of the sampling scheme some pixels will be drawn from the 
 individual forest polygons and the sampled pixels are therefore to some degree 
 not statistically independent (as would samples from neighbouring polygons). However, the aim 
 of our project is not to carry out a statistical analysis, but to train a 
@@ -153,9 +184,9 @@ within the forest polygons themselves and therefore increase the predictive
 capabilities of our models. We also include focal (window) predictors variables 
 to account for within landscape-scale (100 m x 100 m) variation in our models. 
 
-Finally, we chose a sample size of 200k pixels as a compromise between available
-computing power and model performance. There are approximately 56.3 million forest 
-pixels in Denmark and the training sample therefore represents ~0.36% of the 
+Finally, we chose a sample size of 60k pixels as a compromise between available
+computing power and model output performance. There are approximately 56.3 million forest 
+pixels in Denmark and the training sample therefore represents ~0.1% of the 
 total forest area in the country. 
 
 ### Training / validation split (geographic stratifiaction)
