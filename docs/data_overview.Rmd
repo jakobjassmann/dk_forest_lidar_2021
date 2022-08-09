@@ -175,7 +175,9 @@ predictor_vars <- pixel_training_data %>%
          -sample_id,
          -biowide_region,
          -dereks_stratification,
-         -terron_point) %>% 
+         -terron_point,
+         -cell,
+         -polygon_source) %>% 
   names() %>%
   sort()
 
