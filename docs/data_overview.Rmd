@@ -110,8 +110,8 @@ have used higher-resolution predictor data than we actually have. Finally, the r
 will inevitably introduce some uncertainties where the downsampled grid and the orignal grid
 not align.
 
-As a water mask had originally been applied to this data, we had not predictor data
-were a 250 m x 250 m pixel overlapped with a water body. This became a problem when
+As a water mask had originally been applied to this data, we had no predictor data
+in cases where a 250 m x 250 m pixel overlapped with a water body. This became a problem when
 extrapolating the models to the nationwide extent, as the finer grain size of our maps
 introduced more detailed shore lines. We therefore had 10 m x 10 m land pixels for which
 no soil data was available. To address this problem we gap-filled the original 
@@ -137,8 +137,8 @@ four key predictor variables and calculated their mean and variation (sd) for
 two window sizes of 110 m and 250 m around each pixel. We selected these window 
 sizes as the best candidates based on variograms generated for all variables.
 
-We conducted a collinearity analysis on the focal variables and reduced the v
-ariables in a step-wise selection process to the following final four focal 
+We conducted a collinearity analysis on the focal variables and reduced the 
+variables in a step-wise selection process to the following final four focal 
 variables included in the models:
 
 - dtm_10m_sd_110m

@@ -108,26 +108,26 @@ Number of forests: 4849.
 ## Cleaning and preparation of geometries
 
 We observed some overlap between the assembled annotations for high and low
-quality forests, both duplicate mappings within each category, but also some
+quality forests. This overlap included duplicate mappings within each category, as well as some
 duplicate mapping of parts of forests as high and low quality. These inaccuracies
 were expected given the extent of the dataset and the fact that it was assembled
 from multiple sources. To address the issue we carried out a systematic cleaning
 of the geometries (fully reproducible through our source code). 
 
-First, we removed internal overlap within the high quality geometries. For this
-we iteratively removed all internal overlap starting with the p25 forests (internally sorted in arbitary order^), followed 
+First, we removed all internal overlap within the high quality geometries. For this
+we iteratively removed all internal overlap starting with the p25 forests (internally sorted in the order the polygons were loaded), followed 
 by the private old growth and lastly the p15 forests. We also buffered the geometries,
-using a negative buffer of 10 cm to avoid line-overlaps due to geometric inaccuracies. Finally, we removed one
+using a negative buffer of 10 cm to avoid line-overlaps due to inaccuracies in the geometries. Finally, we removed one
 remaining p15 forest that failed to be filtered out. 
 
 Second, we removed all internal overlap within the low quality geometries, taking
-the same approach as for the high quality geometries except working fully in an arbitrary order. 
+the same approach as for the high quality geometries except working in prescribed order (the polygons were simpely processed in the order they were loaded). 
 While doing that we also checked for overlap with any high quality geometries and 
-if that was the case removed those. We also buffered the geometries,
+if that was the case removed any overlap. We also buffered the geometries,
 using a negative buffer of 10 cm to avoid line-overlaps due to geometric inaccuracies.
-Finally, we reomved one remaining ikke_p25 forest that was dublicated in the dataset. 
+Finally, we removed one remaining ikke_p25 forest that was duplicated in the dataset. 
 
-The resulting dataset consists of two type of forest annotations (8915 high and 9720 low quality polygons)
+The resulting dataset consisted of two type of forest annotations (8915 high and 9720 low quality polygons)
 with no internal overlap within or between categories. 
 
 ---
@@ -146,7 +146,7 @@ For the training dataset we drew a sample of 30k pixels each from within
 the high quality and the low quality forest polygons. Specifically, the sample 
 was based on the EcoDes-DK15 "dtm10_m" descriptor raster). The sample was drawn
 in the following fashion: First, we drew a random pixel from within each forest 
-polygon (high or low), we then filled in the missing number of pixels to make up 
+polygon (high or low). We then filled in the missing number of pixels to make up 
 30k for each forest quality class (high or low). The filing step was done completely at
 random, drawing from all remaining pixels available per class. The final dataset of pixels
 therefore contained 30k unique pixels from each class. 
@@ -172,14 +172,14 @@ ggplot() +
   theme_void()
 ```
 
-Note, that because of the sampling scheme some pixels will be drawn from the 
+Note, that because of the sampling scheme some pixels will be drawn from the same
 individual forest polygons and the sampled pixels are therefore to some degree 
 not statistically independent (as would samples from neighbouring polygons). However, the aim 
 of our project is not to carry out a statistical analysis, but to train a 
 machine learning classifier for predicting forest quality. The reduction in 
 independence of the samples is therefore not an issue, as long as it does not lead
 to over fitting of the models (which it did not). Instead sub-sampling of the 
-forest polygons is actually desirable as it allows us to capture the variation 
+forest polygons is likely desirable as it allows us to capture the variation 
 within the forest polygons themselves and therefore increase the predictive 
 capabilities of our models. We also include focal (window) predictors variables 
 to account for within landscape-scale (100 m x 100 m) variation in our models. 

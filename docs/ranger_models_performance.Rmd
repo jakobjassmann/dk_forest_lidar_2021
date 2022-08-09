@@ -19,43 +19,6 @@ library(rasterVis)
 library(kableExtra)
 ```
 
-## Training data overview
-
-I generated a training dataset consisting of 200k pixel samples from the EcoDes-
-DK15 grid. 100k samples each come from one of the two forest polygon sets 
-("low" and "high" forest value). I then extracted the predictor data for the 
-pixel centres for those data. 
-
-``` {r training_data_map, echo = FALSE, cached = TRUE}
-# Load pixel sample
-load("../data/training_data/pixel_training.Rda")
-
-# Get Denmark boundaries
-denmark <- ne_countries(scale = "large", 
-                        country = "denmark",
-                        returnclass = "sf") %>%
-  st_transform(st_crs(pixel_training_data))
-
-# Plot training data
-ggplot() +
-  geom_sf(data = denmark, fill = "NA", colour = "black") +
-  geom_sf(data = pixel_training_data, 
-          mapping = aes(colour = forest_value),
-          size = 0.01) +
-  labs(title = "Pixel sample for training") +
-  coord_sf(datum = st_crs(pixel_training_data)) +
-  theme_void()
-```
-
-For the training I then split the data set into a training (80%) and validation 
-partition (20%). This split was done based on two stratification. The BIOWIDE
-stratification and Derek's stratification. The samples were split so that they 
-were distributed evenly in each strata (80/20). 
-
-I then trained GBM models on this (currently minimal hyperparameter tuning) using
-the training dataset. This document evaluates the performance of each
-stratification based on the validation dataset in both stratification.   
-
 ``` {r function_defs, echo = FALSE, cache=TRUE}
 
 # Load regions
