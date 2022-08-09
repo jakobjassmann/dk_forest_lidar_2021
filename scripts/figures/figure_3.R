@@ -91,7 +91,7 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
            size = 14 * 0.35,
            hjust = 0.5,
            vjust = 0.5) +
-  labs(title = "Estimated High Quality Forest: 2332 km² (233200 ha) ~ 30% of total") +
+  labs(title = "Estimated High Quality Forest: 1420 km² (141958 ha)") +
   theme_map() +
   theme(legend.position = "none",
         plot.margin = unit(c(0.1,0,0,0), "in"),
