@@ -177,10 +177,10 @@ pre code {
 <ol style="list-style-type: decimal">
 <li>We gathered raster predictors with 10 m res. that we deemed meaningful for predicting the quality of forests in Denmark.</li>
 <li>We gathered ~20k annotations for forests with high and low quality in Denmark.</li>
-<li>We generated a training dataset of 200k pixels that fell within the annotated forests.</li>
+<li>We generated a training dataset of 60k pixels that fell within the annotated forests.</li>
 <li>We split the training dataset 80%/20% prior model training using a geographic stratification.</li>
 <li>We trained Gradient Boosting and Random Forest models.</li>
-<li>We tuned the model hyperparameters using 10 fold cross validation based on the training dataset from the 80%/20% split.</li>
+<li>We tuned the model hyperparameters using 5 or 10-fold cross validation based on the training dataset from the 80%/20% split.</li>
 <li>We tested the final model performance on the validation dataset from the 80%/20% split.</li>
 <li>We projected the forest quality across the whole of Denmark using the final models and the predictor rasters.</li>
 </ol>
