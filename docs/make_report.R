@@ -41,7 +41,7 @@ lapply(report_files, function(x){
 
 # Combine to one report
 pdf_combine(report_files,
-             output = "docs/Assmann_et_al-DK_Forest_Quality_Report_v0.1.0.pdf")
+             output = "docs/Assmann_et_al-DK_Forest_Quality_Report_v0.9.1.pdf")
 
 # Remove intermediate pdf files
 lapply(report_files, file.remove)
