@@ -96,7 +96,7 @@ The forest quality models are fitted and fine tuned using the scripts contained 
 
 **Projection across Denmark**
 
-The models can then be used to project the forest quality predictions across Denmark. For the publication, we only used the models based on the "BIOWIDE" stratification, as these models performed better. The projection script also prepares the outputs as cloud optimised geotiffs for webhosting and visualisation using the web app. 
+The models can then be used to project the forest quality predictions across Denmark. The projection scripts also prepare the outputs as cloud optimised geotiffs for webhosting and visualisation using the web app. 
 
 - Projection script: `scripts/projections/project_pixels.R`
 
