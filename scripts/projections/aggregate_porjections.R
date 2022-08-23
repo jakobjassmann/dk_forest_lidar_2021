@@ -80,7 +80,7 @@ gbm_derek_thresh <- quantile(gbm_derek_projections_prop_high, 0.20, na.rm = T)
 
 
 # Graph distributions of proportions
-plot_grid(ggplot() +
+threshold_plot <- plot_grid(ggplot() +
             geom_histogram(aes(x = gbm_biowide_projections_prop_high)) +
             labs(x = "Proportion high quality pixels", y = "Count",
                  title = "GBM BIOWIDE projections") +
@@ -112,7 +112,7 @@ plot_grid(ggplot() +
           ggplot() +
             geom_histogram(aes(x = ranger_derek_projections_prop_high)) +
             labs(x = "Proportion high quality pixels",  y = "Count",
-                 title = "Ranger DEREK projections") +
+                 title = "Ranger Derek projections") +
             scale_y_continuous(limits = c(0,3000)) +            
             geom_vline(aes(xintercept = ranger_derek_thresh), color = "red") +
             annotate("text", x = ranger_derek_thresh, y = 3000, 
@@ -121,7 +121,12 @@ plot_grid(ggplot() +
             theme_cowplot(),
           ncol = 2,
           nrow = 2)
-
+threshold_plot
+save_plot("data/projections/aggregation_thresholds.png",
+          threshold_plot,
+          ncol = 2,
+          nrow = 2,
+          bg = "white")
 ## Generate focal aggregates using the threshold
 
 # Define aggregation functions. These function take the threshold and return
@@ -162,11 +167,11 @@ forest_qual_by_threshold(c(rep(1, ceiling(100 * ranger_biowide_thresh)),
                            threshold = ranger_biowide_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * ranger_biowide_thresh)), 
                            rep(2, 10 + floor(100 * (1 - ranger_biowide_thresh)))),
-                           ranger_biowide_thresh)
+                         threshold =ranger_biowide_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * ranger_biowide_thresh)), 
                            rep(2, 10 + floor(100 * (1 - ranger_biowide_thresh))), 
                            rep(NA, 10)),
-                         ranger_biowide_thresh)
+                         threshold =ranger_biowide_thresh)
 forest_qual_by_threshold(c(NA, NA, NA),
                          threshold = ranger_biowide_thresh)
 # Test the function - first line should be 1, second line 2, third 2, last NA
@@ -175,37 +180,37 @@ forest_qual_by_threshold(c(rep(1, ceiling(100 * ranger_derek_thresh)),
                          threshold = ranger_derek_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * ranger_derek_thresh)), 
                            rep(2, 10 + floor(100 * (1 - ranger_derek_thresh)))),
-                         ranger_derek_thresh)
+                         threshold =ranger_derek_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * ranger_derek_thresh)), 
                            rep(2, 10 + floor(100 * (1 - ranger_derek_thresh))), 
                            rep(NA, 10)),
-                         ranger_derek_thresh)
+                         threshold = ranger_derek_thresh)
 forest_qual_by_threshold(c(NA, NA, NA),
                          threshold = ranger_derek_thresh)
 # Test the function - first line should be 1, second line 2, third 2, last NA
 forest_qual_by_threshold(c(rep(1, ceiling(100 * gbm_biowide_thresh)), 
                            rep(2, floor(100 * (1 - gbm_biowide_thresh)))),
-                         gbm_biowide_thresh)
+                         threshold = gbm_biowide_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * gbm_biowide_thresh)), 
                            rep(2, 10 + floor(100 * (1 - gbm_biowide_thresh)))),
-                         gbm_biowide_thresh)
+                         threshold = gbm_biowide_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * gbm_biowide_thresh)), 
                            rep(2, 10 + floor(100 * (1 - gbm_biowide_thresh))), 
                            rep(NA, 10)),
-                         gbm_biowide_thresh)
+                         threshold = gbm_biowide_thresh)
 forest_qual_by_threshold(c(NA, NA, NA),
                          threshold = gbm_biowide_thresh)
 # Test the function - first line should be 1, second line 2, third 2, last NA
 forest_qual_by_threshold(c(rep(1, ceiling(100 * gbm_derek_thresh)), 
                            rep(2, floor(100 * (1 - gbm_derek_thresh)))),
-                         gbm_derek_thresh)
+                         threshold = gbm_derek_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * gbm_derek_thresh)), 
                            rep(2, 10 + floor(100 * (1 - gbm_derek_thresh)))),
-                         gbm_derek_thresh)
+                         threshold = gbm_derek_thresh)
 forest_qual_by_threshold(c(rep(1, ceiling(100 * gbm_derek_thresh)), 
                            rep(2, 10 + floor(100 * (1 - gbm_derek_thresh))), 
                            rep(NA, 10)),
-                         gbm_derek_thresh)
+                         threshold = gbm_derek_thresh)
 forest_qual_by_threshold(c(NA, NA, NA),
                          threshold = gbm_derek_thresh)
 # Nice one!
@@ -222,11 +227,11 @@ forest_qual_by_threshold(c(NA, NA, NA),
 
 # aggregate rasters to 100 m x 100 m using the threshold function:
 ranger_biowide_projections_100m <- aggregate(ranger_biowide_projections, fact = 10,
-          fun = forest_qual_by_threshold,
-          threshold = ranger_biowide_thresh,
-          filename = "data/projections/ranger_biowide/forest_quality_ranger_biowide_100m.tif",
-          cores = 46, 
-          overwrite = T)
+                                             fun = forest_qual_by_threshold,
+                                             threshold = ranger_biowide_thresh,
+                                             filename = "data/projections/ranger_biowide/forest_quality_ranger_biowide_100m.tif",
+                                             cores = 46, 
+                                             overwrite = T)
 ranger_derek_projections_100m <- aggregate(ranger_derek_projections, fact = 10,
                                              fun = forest_qual_by_threshold,
                                              threshold = ranger_derek_thresh,
@@ -234,11 +239,11 @@ ranger_derek_projections_100m <- aggregate(ranger_derek_projections, fact = 10,
                                              cores = 46, 
                                              overwrite = T)
 gbm_biowide_projections_100m <- aggregate(gbm_biowide_projections, fact = 10,
-          fun = forest_qual_by_threshold,
-          threshold = gbm_biowide_thresh,
-          filename = "data/projections/gbm_biowide/forest_quality_gbm_biowide_100m.tif",
-          cores = 46, 
-          overwrite = T)
+                                          fun = forest_qual_by_threshold,
+                                          threshold = gbm_biowide_thresh,
+                                          filename = "data/projections/gbm_biowide/forest_quality_gbm_biowide_100m.tif",
+                                          cores = 46, 
+                                          overwrite = T)
 gbm_derek_projections_100m <- aggregate(gbm_derek_projections, fact = 10,
                                           fun = forest_qual_by_threshold,
                                           threshold = gbm_derek_thresh,
@@ -248,9 +253,9 @@ gbm_derek_projections_100m <- aggregate(gbm_derek_projections, fact = 10,
 
 # Calculate number and proportion of high quality 100 m cells
 sum(values(ranger_biowide_projections_100m) == 1, na.rm = T)
-sum(values(ranger_biowide_projections_100m) == 1, na.rm = T) / sum(!is.na(values(gbm_biowide_projections_100m)))
+sum(values(ranger_biowide_projections_100m) == 1, na.rm = T) / sum(!is.na(values(ranger_biowide_projections_100m)))
 sum(values(ranger_derek_projections_100m) == 1, na.rm = T)
-sum(values(ranger_derek_projections_100m) == 1, na.rm = T) / sum(!is.na(values(gbm_derek_projections_100m)))
+sum(values(ranger_derek_projections_100m) == 1, na.rm = T) / sum(!is.na(values(ranger_derek_projections_100m)))
 sum(values(gbm_biowide_projections_100m) == 1, na.rm = T)
 sum(values(gbm_biowide_projections_100m) == 1, na.rm = T) / sum(!is.na(values(gbm_biowide_projections_100m)))
 sum(values(gbm_derek_projections_100m) == 1, na.rm = T)
@@ -265,10 +270,10 @@ ranger_derek_projections_100m_downsampled <- resample(ranger_derek_projections_1
                                                         ranger_derek_projections,
                                                         method = "near",
                                                         filename = "data/projections/ranger_derek/forest_quality_ranger_derek_100m_downsampled.tif")
-gbm_derek_projections_100m_downsampled <- resample(gbm_derek_projections_100m, 
-                                             gbm_derek_projections,
+gbm_biowide_projections_100m_downsampled <- resample(gbm_biowide_projections_100m, 
+                                             gbm_biowide_projections,
                                              method = "near",
-                                             filename = "data/projections/gbm_derek/forest_quality_gbm_derek_100m_downsampled.tif")
+                                             filename = "data/projections/gbm_biowide/forest_quality_gbm_biowide_100m_downsampled.tif")
 gbm_derek_projections_100m_downsampled <- resample(gbm_derek_projections_100m, 
                                                      gbm_derek_projections,
                                                      method = "near",
