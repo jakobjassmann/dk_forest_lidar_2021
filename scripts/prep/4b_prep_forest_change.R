@@ -18,6 +18,7 @@ disturbance_since_2015 <- classify(disturbance_since_2015,
                                    matrix(c(0, NA, 
                                             1, 1),
                                           byrow = T, ncol = 2))
+
 # Load projections raster as template
 gbm_biowide <- rast("data/projections/gbm_biowide/forest_quality_gbm_biowide.vrt")
 
@@ -27,7 +28,7 @@ disturbance_since_2015 <- terra::project(disturbance_since_2015,
                                          method = "near")
 
 # Load forest mask
-forest_mask <- rast("data/basemap_forests/forest_mask.tif")
+forest_mask <- rast("data/predictor_data/treetype/forest_mask_bjer_above_half_ha.tif")
 
 # Mask out non-forests
 disturbance_since_2015 <- crop(disturbance_since_2015, forest_mask)
