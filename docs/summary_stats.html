@@ -11,7 +11,6 @@
 
 <meta name="author" content="Jakob Johann Assmann" />
 
-<meta name="date" content="2022-09-08" />
 
 <title>DK Forest LiDAR Summary Stats for Projections</title>
 
@@ -169,131 +168,77 @@ pre code {
 
 <h1 class="title toc-ignore">DK Forest LiDAR Summary Stats for Projections</h1>
 <h4 class="author">Jakob Johann Assmann</h4>
-<h4 class="date">09/08/2022</h4>
+<h4 class="date">18/08/2022</h4>
 
 </div>
 
 
-<p>This document provides summary stats for the forest quality projections. Here, we concentrate on the models (gradient boosting and random forests) trained with the “BIOWIDE” stratification as these performed best overall.</p>
+<p>This document provides summary stats (area) for the forest quality projections. We show the statistics for all four models tested in our analysis.</p>
 <p>Content:</p>
+<!-- 1. Forest area in Denmark according to Basemap 03. -->
 <ol style="list-style-type: decimal">
-<li>Forest area in Denmark according to Basemap 03.</li>
+<li>Forest area in Denmark according to Bjerreskov et al. 2021.</li>
+<li>Training data area: High quality and low quality forests.</li>
 <li>Disturbance detected in forests overall.</li>
-<li>Gradient Boosting model summary tats.</li>
-<li>Random Forest model summary stats.</li>
+<li>Gradient Boosting model summary stats (BIOWIDE).</li>
+<li>Random Forest model summary stats (BIOWIDE).</li>
+<li>Gradient Boosting model summary stats (Derek’s stratification).</li>
+<li>Random Forest model summarz stats (Derek’s stratification).</li>
 </ol>
-<div id="forests-in-denmark-according-to-basemap-03" class="section level2">
-<h2>Forests in Denmark according to Basemap 03</h2>
-<p>The forest mask used for our projections is based on the DCE Basemap 03 sub-layer “tree cover” for 2016 <a href="https://dce2.au.dk/pub/TR159.pdf">(Levin 2019)</a>.</p>
-<p>The sub-layer contains five “object types”: 1) tree cover, 2) forest / afforestation, 3) Christmas trees / cut greenery, 4) nursery / plantation, and 5) energy forest.</p>
-<p>The table below shows how much area each of the classes cover in the layer (see also Table 4.3, Levin 2019):</p>
-<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
-<thead>
-<tr>
-<th style="text-align:left;">
-Code
-</th>
-<th style="text-align:left;">
-Name
-</th>
-<th style="text-align:right;">
-Area [km²]
-</th>
-<th style="text-align:right;">
-Proportion [%]
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-1
-</td>
-<td style="text-align:left;">
-tree cover
-</td>
-<td style="text-align:right;">
-928.3
-</td>
-<td style="text-align:right;">
-13.5
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-2
-</td>
-<td style="text-align:left;">
-forest / afforestation
-</td>
-<td style="text-align:right;">
-5633.9
-</td>
-<td style="text-align:right;">
-81.9
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-3
-</td>
-<td style="text-align:left;">
-Christmas trees / cut greenery
-</td>
-<td style="text-align:right;">
-176.2
-</td>
-<td style="text-align:right;">
-2.6
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-4
-</td>
-<td style="text-align:left;">
-nursery / plantation
-</td>
-<td style="text-align:right;">
-46.8
-</td>
-<td style="text-align:right;">
-0.7
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-5
-</td>
-<td style="text-align:left;">
-energy forest
-</td>
-<td style="text-align:right;">
-91.4
-</td>
-<td style="text-align:right;">
-1.3
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-<ul>
-<li></td>
-<td style="text-align:left;">
-total
-</td>
-<td style="text-align:right;">
-6876.5
-</td>
-<td style="text-align:right;">
-100.0
-</td>
-</tr>
-</tbody>
-</table></li>
-</ul>
-<p>For our projections <strong>we only use the “forest / afforestation” layer (2)</strong>.</p>
-<p>To match the grid of the EcoDes-DK15 rasters we had to project the forest mask. For this we used a nearest neighbour algorithm. Here we simply confirm that the forest area (code 2) in the final mask “forest_mask.tif” matches the area noted in the table above.</p>
+<!-- ## Forests in Denmark according to Basemap 03 -->
+<!-- The forest mask used for our projections is based on the DCE Basemap 03  -->
+<!-- sub-layer "tree cover" for 2016 [(Levin 2019)](https://dce2.au.dk/pub/TR159.pdf). -->
+<!-- The sub-layer contains five "object types": 1) tree cover, 2) forest / afforestation,  -->
+<!-- 3) Christmas trees / cut greenery, 4) nursery / plantation, and 5) energy forest.  -->
+<!-- The table below shows how much area each of the classes cover in the layer (see  -->
+<!-- also Table 4.3, Levin 2019): -->
+<!-- ``` {r basemap_forest_area, echo = FALSE} -->
+<!-- tibble( -->
+<!--   Code = c(as.character(1:5), "-"), -->
+<!--   Name = c("tree cover",  -->
+<!--            "forest / afforestation",  -->
+<!--            "Christmas trees / cut greenery", -->
+<!--            "nursery / plantation",  -->
+<!--            "energy forest", -->
+<!--            "total"), -->
+<!--   `Area [km²]` = c(928.3, -->
+<!--                    5633.9, -->
+<!--                    176.2, -->
+<!--                    46.8, -->
+<!--                    91.4, -->
+<!--                    6876.5), -->
+<!--   `Proportion [%]` = c( -->
+<!--     13.5, -->
+<!--     81.9, -->
+<!--     2.6, -->
+<!--     0.7, -->
+<!--     1.3, -->
+<!--     100 -->
+<!--   ) -->
+<!-- ) %>%  -->
+<!--   kable() %>% -->
+<!--   kable_classic(position = "left", -->
+<!--                 full_width = FALSE) -->
+<!-- ``` -->
+<!-- For our projections **we only use the "forest / afforestation" layer (2)**.  -->
+<!-- To match the grid of the EcoDes-DK15 rasters we had to project the forest mask. -->
+<!-- For this we used a nearest neighbour algorithm. Here we simply confirm that the  -->
+<!-- forest area (code 2) in the final mask "forest_mask.tif" matches the area noted  -->
+<!-- in the table above.  -->
+<!-- ```{r area_forest_mask, echo = FALSE, cache = FALSE} -->
+<!-- forest_mask <- rast("../data/basemap_forests/forest_mask.tif") -->
+<!-- total_forest_area <- (global(forest_mask == 1, "sum", na.rm = T) * (10 * 10))$sum[1] -->
+<!-- tibble( -->
+<!--   `Layer` = "forest mask", -->
+<!--   `Area [km²]` = round(total_forest_area / 1000^2, 2) -->
+<!-- ) %>%  -->
+<!--   kable() %>% -->
+<!--   kable_classic(position = "left", -->
+<!--                 full_width = FALSE) -->
+<!-- ``` -->
+<div id="forests-area-in-denmark-according-to-bjerreskov-et-al.-2021" class="section level2">
+<h2>Forests area in Denmark according to Bjerreskov et al. 2021</h2>
+<p>Below you can find the total area of forest in the forest mask from Bjerreskov et al. 2021. This is the reference for the total area of forest used in our project. The mask is based on the tree type layer from the same publication (see predictor description). We generated the forest mask by refining the treetype layer into a forest mask by applying a minimum mapping filter removing all continuous forest patches smaller than 500 m2 (see also Bjerreskov et al. 2021).</p>
 <table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
 <thead>
 <tr>
@@ -311,7 +256,105 @@ Area [km²]
 forest mask
 </td>
 <td style="text-align:right;">
-5633.89
+6345.3
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="training-data-area-high-quality-and-low-quality-forests" class="section level2">
+<h2>Training data area: High quality and low quality forests</h2>
+<p>Here you can see the area covered by our training data. Including both the high quality forests with designations (p15, p25 and private old growth), as well as the low quality training polygons. The proportions are given relative to the total area of forest according to the forest mask generated from Bjerreskov et al. 2021 (see above).</p>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+category
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion of all forest [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+p25
+</td>
+<td style="text-align:right;">
+111.71
+</td>
+<td style="text-align:right;">
+2e-06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+private_old_growth
+</td>
+<td style="text-align:right;">
+31.98
+</td>
+<td style="text-align:right;">
+1e-06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+p15
+</td>
+<td style="text-align:right;">
+17.79
+</td>
+<td style="text-align:right;">
+0e+00
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total_high_quality
+</td>
+<td style="text-align:right;">
+161.13
+</td>
+<td style="text-align:right;">
+3e-06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ikke_p25
+</td>
+<td style="text-align:right;">
+59.33
+</td>
+<td style="text-align:right;">
+1e-06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+NST_plantations
+</td>
+<td style="text-align:right;">
+46.70
+</td>
+<td style="text-align:right;">
+1e-06
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total_low_quality
+</td>
+<td style="text-align:right;">
+106.03
+</td>
+<td style="text-align:right;">
+2e-06
 </td>
 </tr>
 </tbody>
@@ -341,7 +384,7 @@ Proportion [%]
 disturbed forest
 </td>
 <td style="text-align:right;">
-74.48
+84.49
 </td>
 <td style="text-align:right;">
 1.30
@@ -352,7 +395,7 @@ disturbed forest
 total forest
 </td>
 <td style="text-align:right;">
-5633.89
+6345.30
 </td>
 <td style="text-align:right;">
 100.00
@@ -361,8 +404,8 @@ total forest
 </tbody>
 </table>
 </div>
-<div id="gradient-boosting-projections-summary-stats" class="section level2">
-<h2>Gradient Boosting projections summary stats</h2>
+<div id="gradient-boosting-projections-summary-stats-biowide" class="section level2">
+<h2>Gradient Boosting projections summary stats (BIOWIDE)</h2>
 <p>This gradient boosting model was trained based on the “BIOWIDE” stratification.</p>
 <table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
 <thead>
@@ -384,10 +427,10 @@ Proportion [%]
 high quality forest
 </td>
 <td style="text-align:right;">
-1409.32
+1979.92
 </td>
 <td style="text-align:right;">
-25.00
+31.20
 </td>
 </tr>
 <tr>
@@ -395,10 +438,10 @@ high quality forest
 low quality forest
 </td>
 <td style="text-align:right;">
-3238.56
+4307.60
 </td>
 <td style="text-align:right;">
-57.50
+67.90
 </td>
 </tr>
 <tr>
@@ -406,7 +449,7 @@ low quality forest
 total forest
 </td>
 <td style="text-align:right;">
-5633.89
+6345.30
 </td>
 <td style="text-align:right;">
 100.00
@@ -435,10 +478,10 @@ Proportion [%]
 disturbed high quality forest
 </td>
 <td style="text-align:right;">
-15.74
+18.20
 </td>
 <td style="text-align:right;">
-1.10
+0.90
 </td>
 </tr>
 <tr>
@@ -446,7 +489,7 @@ disturbed high quality forest
 total high quality forest
 </td>
 <td style="text-align:right;">
-1409.32
+1979.92
 </td>
 <td style="text-align:right;">
 100.00
@@ -474,10 +517,10 @@ Proportion [%]
 disturbed low quality forest
 </td>
 <td style="text-align:right;">
-58.74
+66.29
 </td>
 <td style="text-align:right;">
-1.80
+1.50
 </td>
 </tr>
 <tr>
@@ -485,7 +528,7 @@ disturbed low quality forest
 total low quality forest
 </td>
 <td style="text-align:right;">
-3238.56
+4307.60
 </td>
 <td style="text-align:right;">
 100.00
@@ -513,10 +556,10 @@ Proportion [%]
 disturbed high quality forest
 </td>
 <td style="text-align:right;">
-15.74
+18.20
 </td>
 <td style="text-align:right;">
-21.10
+21.50
 </td>
 </tr>
 <tr>
@@ -524,10 +567,10 @@ disturbed high quality forest
 disturbed low quality forest
 </td>
 <td style="text-align:right;">
-58.74
+66.29
 </td>
 <td style="text-align:right;">
-78.90
+78.50
 </td>
 </tr>
 <tr>
@@ -535,7 +578,7 @@ disturbed low quality forest
 total disturbed forest
 </td>
 <td style="text-align:right;">
-74.48
+84.49
 </td>
 <td style="text-align:right;">
 100.00
@@ -544,8 +587,8 @@ total disturbed forest
 </tbody>
 </table>
 </div>
-<div id="random-forest-projections-summary-stats" class="section level2">
-<h2>Random Forest projections summary stats</h2>
+<div id="random-forest-projections-summary-stats-biowide" class="section level2">
+<h2>Random Forest projections summary stats (BIOWIDE)</h2>
 <p>This random forest model was trained based on the “BIOWIDE” stratification.</p>
 <table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
 <thead>
@@ -567,10 +610,10 @@ Proportion [%]
 high quality forest
 </td>
 <td style="text-align:right;">
-1434.90
+1999.61
 </td>
 <td style="text-align:right;">
-25.50
+31.50
 </td>
 </tr>
 <tr>
@@ -578,10 +621,10 @@ high quality forest
 low quality forest
 </td>
 <td style="text-align:right;">
-3212.98
+4287.91
 </td>
 <td style="text-align:right;">
-57.00
+67.60
 </td>
 </tr>
 <tr>
@@ -589,7 +632,7 @@ low quality forest
 total forest
 </td>
 <td style="text-align:right;">
-5633.89
+6345.30
 </td>
 <td style="text-align:right;">
 100.00
@@ -618,10 +661,10 @@ Proportion [%]
 disturbed high quality forest
 </td>
 <td style="text-align:right;">
-15.32
+17.81
 </td>
 <td style="text-align:right;">
-1.10
+0.90
 </td>
 </tr>
 <tr>
@@ -629,7 +672,7 @@ disturbed high quality forest
 total high quality forest
 </td>
 <td style="text-align:right;">
-1434.90
+1999.61
 </td>
 <td style="text-align:right;">
 100.00
@@ -657,10 +700,10 @@ Proportion [%]
 disturbed low quality forest
 </td>
 <td style="text-align:right;">
-59.16
+66.69
 </td>
 <td style="text-align:right;">
-1.80
+1.60
 </td>
 </tr>
 <tr>
@@ -668,7 +711,7 @@ disturbed low quality forest
 total low quality forest
 </td>
 <td style="text-align:right;">
-3212.98
+4287.91
 </td>
 <td style="text-align:right;">
 100.00
@@ -696,10 +739,10 @@ Proportion [%]
 disturbed high quality forest
 </td>
 <td style="text-align:right;">
-15.32
+17.81
 </td>
 <td style="text-align:right;">
-20.60
+21.10
 </td>
 </tr>
 <tr>
@@ -707,10 +750,10 @@ disturbed high quality forest
 disturbed low quality forest
 </td>
 <td style="text-align:right;">
-59.16
+66.69
 </td>
 <td style="text-align:right;">
-79.40
+78.90
 </td>
 </tr>
 <tr>
@@ -718,7 +761,373 @@ disturbed low quality forest
 total disturbed forest
 </td>
 <td style="text-align:right;">
-74.48
+84.49
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="gradient-boosting-projections-summary-stats-dereks-stratification" class="section level2">
+<h2>Gradient Boosting projections summary stats (Derek’s stratification)</h2>
+<p>This gradient boosting model was trained based on the “Derek’s” stratification.</p>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+high quality forest
+</td>
+<td style="text-align:right;">
+1986.18
+</td>
+<td style="text-align:right;">
+31.30
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+low quality forest
+</td>
+<td style="text-align:right;">
+4301.33
+</td>
+<td style="text-align:right;">
+67.80
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total forest
+</td>
+<td style="text-align:right;">
+6345.30
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+<p>Disturbance statistics:</p>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+disturbed high quality forest
+</td>
+<td style="text-align:right;">
+18.19
+</td>
+<td style="text-align:right;">
+0.90
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total high quality forest
+</td>
+<td style="text-align:right;">
+1986.18
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+disturbed low quality forest
+</td>
+<td style="text-align:right;">
+66.30
+</td>
+<td style="text-align:right;">
+1.50
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total low quality forest
+</td>
+<td style="text-align:right;">
+4301.33
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+disturbed high quality forest
+</td>
+<td style="text-align:right;">
+18.19
+</td>
+<td style="text-align:right;">
+21.50
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+disturbed low quality forest
+</td>
+<td style="text-align:right;">
+66.30
+</td>
+<td style="text-align:right;">
+78.50
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total disturbed forest
+</td>
+<td style="text-align:right;">
+84.49
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="random-forest-projections-summary-stats-dereks-stratification" class="section level2">
+<h2>Random Forest projections summary stats (Derek’s stratification)</h2>
+<p>This random forest model was trained based on the “Derek’s” stratification.</p>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+high quality forest
+</td>
+<td style="text-align:right;">
+2007.38
+</td>
+<td style="text-align:right;">
+31.60
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+low quality forest
+</td>
+<td style="text-align:right;">
+4280.13
+</td>
+<td style="text-align:right;">
+67.50
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total forest
+</td>
+<td style="text-align:right;">
+6345.30
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+<p>Disturbance statistics:</p>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+disturbed high quality forest
+</td>
+<td style="text-align:right;">
+17.97
+</td>
+<td style="text-align:right;">
+0.90
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total high quality forest
+</td>
+<td style="text-align:right;">
+2007.38
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+disturbed low quality forest
+</td>
+<td style="text-align:right;">
+66.52
+</td>
+<td style="text-align:right;">
+1.60
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total low quality forest
+</td>
+<td style="text-align:right;">
+4280.13
+</td>
+<td style="text-align:right;">
+100.00
+</td>
+</tr>
+</tbody>
+</table>
+<table class=" lightable-classic" style="font-family: &quot;Arial Narrow&quot;, &quot;Source Sans Pro&quot;, sans-serif; width: auto !important; ">
+<thead>
+<tr>
+<th style="text-align:left;">
+Type
+</th>
+<th style="text-align:right;">
+Area [km²]
+</th>
+<th style="text-align:right;">
+Proportion [%]
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+disturbed high quality forest
+</td>
+<td style="text-align:right;">
+17.97
+</td>
+<td style="text-align:right;">
+21.30
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+disturbed low quality forest
+</td>
+<td style="text-align:right;">
+66.52
+</td>
+<td style="text-align:right;">
+78.70
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+total disturbed forest
+</td>
+<td style="text-align:right;">
+84.49
 </td>
 <td style="text-align:right;">
 100.00

@@ -16,71 +16,131 @@ library(ggplot2)
 library(kableExtra)
 ```
 
-This document provides summary stats for the forest quality projections. Here, 
-we concentrate on the models (gradient boosting and random forests) trained with 
-the "BIOWIDE" stratification as these performed best overall. 
+This document provides summary stats (area) for the forest quality projections.
+We show the statistics for all four models tested in our analysis. 
 
 Content:
 
-1. Forest area in Denmark according to Basemap 03.
-2. Disturbance detected in forests overall.
-2. Gradient Boosting model summary tats.
-3. Random Forest model summary stats.
+<!-- 1. Forest area in Denmark according to Basemap 03. -->
+1. Forest area in Denmark according to Bjerreskov et al. 2021.
+2. Training data area: High quality and low quality forests.
+3. Disturbance detected in forests overall.
+4. Gradient Boosting model summary stats (BIOWIDE).
+5. Random Forest model summary stats (BIOWIDE).
+6. Gradient Boosting model summary stats (Derek's stratification).
+7. Random Forest model summarz stats (Derek's stratification).
 
-## Forests in Denmark according to Basemap 03
+<!-- ## Forests in Denmark according to Basemap 03 -->
 
-The forest mask used for our projections is based on the DCE Basemap 03 
-sub-layer "tree cover" for 2016 [(Levin 2019)](https://dce2.au.dk/pub/TR159.pdf).
+<!-- The forest mask used for our projections is based on the DCE Basemap 03  -->
+<!-- sub-layer "tree cover" for 2016 [(Levin 2019)](https://dce2.au.dk/pub/TR159.pdf). -->
 
-The sub-layer contains five "object types": 1) tree cover, 2) forest / afforestation, 
-3) Christmas trees / cut greenery, 4) nursery / plantation, and 5) energy forest. 
+<!-- The sub-layer contains five "object types": 1) tree cover, 2) forest / afforestation,  -->
+<!-- 3) Christmas trees / cut greenery, 4) nursery / plantation, and 5) energy forest.  -->
 
-The table below shows how much area each of the classes cover in the layer (see 
-also Table 4.3, Levin 2019):
+<!-- The table below shows how much area each of the classes cover in the layer (see  -->
+<!-- also Table 4.3, Levin 2019): -->
 
-``` {r basemap_forest_area, echo = FALSE}
+<!-- ``` {r basemap_forest_area, echo = FALSE} -->
+<!-- tibble( -->
+<!--   Code = c(as.character(1:5), "-"), -->
+<!--   Name = c("tree cover",  -->
+<!--            "forest / afforestation",  -->
+<!--            "Christmas trees / cut greenery", -->
+<!--            "nursery / plantation",  -->
+<!--            "energy forest", -->
+<!--            "total"), -->
+<!--   `Area [km²]` = c(928.3, -->
+<!--                    5633.9, -->
+<!--                    176.2, -->
+<!--                    46.8, -->
+<!--                    91.4, -->
+<!--                    6876.5), -->
+<!--   `Proportion [%]` = c( -->
+<!--     13.5, -->
+<!--     81.9, -->
+<!--     2.6, -->
+<!--     0.7, -->
+<!--     1.3, -->
+<!--     100 -->
+<!--   ) -->
+<!-- ) %>%  -->
+<!--   kable() %>% -->
+<!--   kable_classic(position = "left", -->
+<!--                 full_width = FALSE) -->
+<!-- ``` -->
+
+<!-- For our projections **we only use the "forest / afforestation" layer (2)**.  -->
+
+<!-- To match the grid of the EcoDes-DK15 rasters we had to project the forest mask. -->
+<!-- For this we used a nearest neighbour algorithm. Here we simply confirm that the  -->
+<!-- forest area (code 2) in the final mask "forest_mask.tif" matches the area noted  -->
+<!-- in the table above.  -->
+
+<!-- ```{r area_forest_mask, echo = FALSE, cache = FALSE} -->
+<!-- forest_mask <- rast("../data/basemap_forests/forest_mask.tif") -->
+<!-- total_forest_area <- (global(forest_mask == 1, "sum", na.rm = T) * (10 * 10))$sum[1] -->
+<!-- tibble( -->
+<!--   `Layer` = "forest mask", -->
+<!--   `Area [km²]` = round(total_forest_area / 1000^2, 2) -->
+<!-- ) %>%  -->
+<!--   kable() %>% -->
+<!--   kable_classic(position = "left", -->
+<!--                 full_width = FALSE) -->
+<!-- ``` -->
+
+## Forests area in Denmark according to Bjerreskov et al. 2021
+
+Below you can find the total area of forest in the forest mask from Bjerreskov et al. 2021.
+This is the reference for the total area of forest used in our project. The mask is
+based on the tree type layer from the same publication (see predictor description). We generated
+the forest mask by refining the treetype layer into a forest mask by applying a minimum mapping filter removing all continuous forest patches smaller than 500 m2 (see also Bjerreskov et al. 2021).
+
+```{r area_forest_mask, echo = FALSE, cache = FALSE}
+forest_mask <- rast("../data/predictor_data/treetype/forest_mask_bjer_above_half_ha.tif")
+total_forest_area <- (global(forest_mask == 1, "sum", na.rm = T) * (10 * 10))$sum[1]
 tibble(
-  Code = c(as.character(1:5), "-"),
-  Name = c("tree cover", 
-           "forest / afforestation", 
-           "Christmas trees / cut greenery",
-           "nursery / plantation", 
-           "energy forest",
-           "total"),
-  `Area [km²]` = c(928.3,
-                   5633.9,
-                   176.2,
-                   46.8,
-                   91.4,
-                   6876.5),
-  `Proportion [%]` = c(
-    13.5,
-    81.9,
-    2.6,
-    0.7,
-    1.3,
-    100
-  )
-) %>% 
+  `Layer` = "forest mask",
+  `Area [km²]` = round(total_forest_area / 1000^2, 2)
+) %>%
   kable() %>%
   kable_classic(position = "left",
                 full_width = FALSE)
 ```
 
-For our projections **we only use the "forest / afforestation" layer (2)**. 
+## Training data area: High quality and low quality forests
 
-To match the grid of the EcoDes-DK15 rasters we had to project the forest mask.
-For this we used a nearest neighbour algorithm. Here we simply confirm that the 
-forest area (code 2) in the final mask "forest_mask.tif" matches the area noted 
-in the table above. 
+Here you can see the area covered by our training data. Including both the
+high quality forests with designations (p15, p25 and private old growth), as well as the 
+low quality training polygons. The proportions are given relative to the total area of
+forest according to the forest mask generated from Bjerreskov et al. 2021 (see above). 
 
-```{r area_forest_mask, echo = FALSE, cache = TRUE}
-forest_mask <- rast("../data/basemap_forests/forest_mask.tif")
-total_forest_area <- (global(forest_mask == 1, "sum", na.rm = T) * (10 * 10))$sum[1]
+```{r designations_area, echo = FALSE}
+load("../data/training_data/polygon_geometries/high_quality_polys.Rda")
+load("../data/training_data/polygon_geometries/low_quality_polys.Rda")
+
 tibble(
-  `Layer` = "forest mask",
-  `Area [km²]` = round(total_forest_area / 1000^2, 2)
+  category = c(unique(high_quality$polygon_source),
+               "total_high_quality",
+               unique(low_quality$polygon_source),
+               "total_low_quality"),
+  `Area [km²]` = round(c(high_quality %>% 
+                           group_by(polygon_source) %>%
+                           summarize() %>%
+                           st_area(),
+                         high_quality%>%
+                           summarize() %>%
+                           st_area(),
+                         low_quality %>% 
+                           group_by(polygon_source) %>%
+                           summarize() %>%
+                           st_area(),
+                         low_quality %>%
+                           summarize() %>%
+                           st_area()) / 1000^2, 2) %>% 
+    as.numeric()
 ) %>% 
+  mutate(`Proportion of all forest [%]` = round((`Area [km²]` / total_forest_area) * 100, 6)) %>%
   kable() %>%
   kable_classic(position = "left",
                 full_width = FALSE)
@@ -95,7 +155,7 @@ Please note that this disturbance mask was projected and down-sampled from a 30 
 neighbour algorithm), potentially adding small uncertainties to the area estimates. Currently, we also only account for disturbances from 2016 till 2020. 
 
 
-``` {r disturbance_stats, echo = FALSE, cache = TRUE}
+``` {r disturbance_stats, echo = FALSE, cache = FALSE}
 disturbance_mask <- rast("../data/forest_change_cs/disturbance_since_2015.tif")
 gbm_biowide_projections <- rast("../data/projections/gbm_biowide/forest_quality_gbm_biowide.vrt")
 disturbance_mask <- mask(disturbance_mask, gbm_biowide_projections)
@@ -112,11 +172,11 @@ tibble(
                 full_width = FALSE)
 ```
 
-## Gradient Boosting projections summary stats
+## Gradient Boosting projections summary stats (BIOWIDE)
 
 This gradient boosting model was trained based on the "BIOWIDE" stratification.
 
-``` {r gbm_biowide_stats, echo = FALSE, cache = TRUE}
+``` {r gbm_biowide_stats, echo = FALSE, cache = FALSE}
 high_quality_forest <- gbm_biowide_projections == 1
 high_quality_forest_area <- (global(high_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
 low_quality_forest <- gbm_biowide_projections == 2
@@ -140,7 +200,7 @@ tibble(
 
 Disturbance statistics:
 
-``` {r gbm_biowide_disturbance, echo = FALSE, cache = TRUE}
+``` {r gbm_biowide_disturbance, echo = FALSE, cache = FALSE}
 disturbance_mask_applied <- disturbance_mask
 disturbance_mask_applied[disturbance_mask_applied != 1] <- NA
 high_quality_forest_disturbed <- mask(high_quality_forest, disturbance_mask_applied)
@@ -188,11 +248,11 @@ tibble(
                 full_width = FALSE)
 ```
 
-## Random Forest projections summary stats
+## Random Forest projections summary stats (BIOWIDE)
 
 This random forest model was trained based on the "BIOWIDE" stratification.
 
-``` {r ranger_biowide_stats, echo = FALSE, cache = TRUE}
+``` {r ranger_biowide_stats, echo = FALSE, cache = FALSE}
 ranger_biowide_projections <- rast("../data/projections/ranger_biowide/forest_quality_ranger_biowide.vrt")
 high_quality_forest <- ranger_biowide_projections == 1
 high_quality_forest_area <- (global(high_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
@@ -217,7 +277,167 @@ tibble(
 
 Disturbance statistics:
 
-``` {r ranger_biowide_disturbance, echo = FALSE, cache = TRUE}
+``` {r ranger_biowide_disturbance, echo = FALSE, cache = FALSE}
+disturbance_mask_applied <- disturbance_mask
+disturbance_mask_applied[disturbance_mask_applied != 1] <- NA
+high_quality_forest_disturbed <- mask(high_quality_forest, disturbance_mask_applied)
+high_quality_forest_disturbed_area <- (global(high_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
+low_quality_forest_disturbed <- mask(low_quality_forest, disturbance_mask_applied) 
+low_quality_forest_disturbed_area <- (global(low_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
+
+tibble(
+  `Type` = c("disturbed high quality forest",
+             "total high quality forest"),
+  `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
+                         high_quality_forest_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / high_quality_forest_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+
+tibble(
+  `Type` = c("disturbed low quality forest",
+             "total low quality forest"),
+  `Area [km²]` = round(c(low_quality_forest_disturbed_area / 1000^2,
+                         low_quality_forest_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * low_quality_forest_disturbed_area / low_quality_forest_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+
+tibble(
+  `Type` = c("disturbed high quality forest",
+             "disturbed low quality forest",
+             "total disturbed forest"),
+  `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
+                         low_quality_forest_disturbed_area / 1000^2,
+                         disturbance_mask_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / disturbance_mask_area,
+                                     100 * low_quality_forest_disturbed_area / disturbance_mask_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+```
+
+## Gradient Boosting projections summary stats (Derek's stratification)
+
+This gradient boosting model was trained based on the "Derek's" stratification.
+
+``` {r gbm_derek_stats, echo = FALSE, cache = FALSE}
+gbm_derek_projections <- rast("../data/projections/gbm_derek/forest_quality_gbm_derek.vrt")
+high_quality_forest <- gbm_derek_projections == 1
+high_quality_forest_area <- (global(high_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
+low_quality_forest <- gbm_derek_projections == 2
+low_quality_forest_area <- (global(low_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
+
+tibble(
+  `Type` = c("high quality forest",
+             "low quality forest",
+             "total forest"),
+  `Area [km²]` = round(c(high_quality_forest_area / 1000^2,
+                         low_quality_forest_area / 1000^2,
+                         total_forest_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * high_quality_forest_area / total_forest_area,
+                                     100 * low_quality_forest_area / total_forest_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+```
+
+Disturbance statistics:
+
+``` {r gbm_derek_disturbance, echo = FALSE, cache = FALSE}
+disturbance_mask <- rast("../data/forest_change_cs/disturbance_since_2015.tif")
+gbm_biowide_projections <- rast("../data/projections/gbm_biowide/forest_quality_gbm_biowide.vrt")
+disturbance_mask <- mask(disturbance_mask, gbm_biowide_projections)
+disturbance_mask_applied <- disturbance_mask
+disturbance_mask_applied[disturbance_mask_applied != 1] <- NA
+high_quality_forest_disturbed <- mask(high_quality_forest, disturbance_mask_applied)
+high_quality_forest_disturbed_area <- (global(high_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
+low_quality_forest_disturbed <- mask(low_quality_forest, disturbance_mask_applied) 
+low_quality_forest_disturbed_area <- (global(low_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
+
+tibble(
+  `Type` = c("disturbed high quality forest",
+             "total high quality forest"),
+  `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
+                         high_quality_forest_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / high_quality_forest_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+
+tibble(
+  `Type` = c("disturbed low quality forest",
+             "total low quality forest"),
+  `Area [km²]` = round(c(low_quality_forest_disturbed_area / 1000^2,
+                         low_quality_forest_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * low_quality_forest_disturbed_area / low_quality_forest_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+
+tibble(
+  `Type` = c("disturbed high quality forest",
+             "disturbed low quality forest",
+             "total disturbed forest"),
+  `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
+                         low_quality_forest_disturbed_area / 1000^2,
+                         disturbance_mask_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / disturbance_mask_area,
+                                     100 * low_quality_forest_disturbed_area / disturbance_mask_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+```
+
+## Random Forest projections summary stats (Derek's stratification)
+
+This random forest model was trained based on the "Derek's" stratification.
+
+``` {r ranger_derek_stats, echo = FALSE, cache = FALSE}
+ranger_derek_projections <- rast("../data/projections/ranger_derek/forest_quality_ranger_derek.vrt")
+high_quality_forest <- ranger_derek_projections == 1
+high_quality_forest_area <- (global(high_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
+low_quality_forest <- ranger_derek_projections == 2
+low_quality_forest_area <- (global(low_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
+
+tibble(
+  `Type` = c("high quality forest",
+             "low quality forest",
+             "total forest"),
+  `Area [km²]` = round(c(high_quality_forest_area / 1000^2,
+                         low_quality_forest_area / 1000^2,
+                         total_forest_area / 1000^2), 2),
+  `Proportion [%]` = formatC(round(c(100 * high_quality_forest_area / total_forest_area,
+                                     100 * low_quality_forest_area / total_forest_area,
+                                     100), 1), digits = 2, format = "f")
+) %>%
+  kable(align = c('l','r','r')) %>%
+  kable_classic(position = "left",
+                full_width = FALSE)
+```
+
+Disturbance statistics:
+
+``` {r ranger_derek_disturbance, echo = FALSE, cache = FALSE}
+disturbance_mask <- rast("../data/forest_change_cs/disturbance_since_2015.tif")
+gbm_biowide_projections <- rast("../data/projections/gbm_biowide/forest_quality_gbm_biowide.vrt")
+disturbance_mask <- mask(disturbance_mask, gbm_biowide_projections)
 disturbance_mask_applied <- disturbance_mask
 disturbance_mask_applied[disturbance_mask_applied != 1] <- NA
 high_quality_forest_disturbed <- mask(high_quality_forest, disturbance_mask_applied)
