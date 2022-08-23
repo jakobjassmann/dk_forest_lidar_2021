@@ -40,7 +40,7 @@ treetype_bjer_con <- treetype_bjer == 1
 treetype_bjer_dec <- treetype_bjer == 2
 
 # Load target raster for resampling
-dtm10m <- rast("F:/JakobAssmann/EcoDes-DK_v1.1.0/dtm_10m/dtm_10m.vrt")
+dtm10m <- rast("F:/JakobAssmann/EcoDes-DK15_v1.1.0/dtm_10m/dtm_10m.vrt")
 
 # Resample
 treetype_bjer_con <- resample(treetype_bjer_con, dtm10m, method = "near")
@@ -49,5 +49,26 @@ treetype_bjer_dec <- resample(treetype_bjer_dec, dtm10m, method = "near")
 # Write out rasters
 writeRaster(treetype_bjer_con, "data/predictor_data/treetype/treetype_bjer_con.tif")
 writeRaster(treetype_bjer_dec, "data/predictor_data/treetype/treetype_bjer_dec.tif")
+
+# Generate alternative forest mask
+forest_mask <- resample(!is.na(treetype_bjer), dtm10m, method = "near")
+forest_mask <- classify(forest_mask, 
+                        matrix(c(0, NA, 
+                                 1, 1),
+                               byrow = T, ncol = 2))
+
+# Apply minimum area mapping (500 m2)
+forest_mask_polys <- as.polygons(forest_mask)
+forest_mask_polys_sf <- st_as_sf(forest_mask_polys)
+forest_mask_polys_sf <- st_cast(forest_mask_polys_sf, "POLYGON")
+forest_mask_polys_sf_area <- st_area(forest_mask_polys_sf)
+forest_mask_polys_sf_above_half_ha <- forest_mask_polys_sf[forest_mask_polys_sf_area >= units::set_units(500, "m^2"),]
+forest_mask_above_half_ha <- mask(forest_mask, vect(forest_mask_polys_sf_above_half_ha))
+
+# Write forest masks
+writeRaster(forest_mask,
+            filename = "data/predictor_data/treetype/forest_mask_bjer.tif")
+writeRaster(forest_mask_above_half_ha,
+            filename = "data/predictor_data/treetype/forest_mask_bjer_above_half_ha.tif")
 
 # EOF
