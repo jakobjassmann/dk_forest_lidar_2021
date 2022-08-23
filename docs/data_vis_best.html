@@ -153,10 +153,8 @@
         // Load GeoRasters ----
 
         // Set URLs to COG files
-        var gbm_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_cog_epsg3857_v0.9.1.tif";
-        var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v0.9.1.tif";
-				var gbm_projections_agg_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_biowide_100m_downsampled_cog_epsg3857_v0.9.1.tif";
-        var ranger_projections_agg_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_100m_downsampled_cog_epsg3857_v0.9.1.tif";
+        var ranger_projections_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v1.0.0.tif";
+		var ranger_projections_agg_file = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_100m_downsampled_cog_epsg3857_v1.0.0.tif";
         var disturbance_since_2015 = "https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.9.1.tif";
 
         // Cornelius disturbances
@@ -181,28 +179,28 @@
             return disturbance_2015;
         });
 
-				// Ranger projections aggregate
-				var ranger_projections_agg_promise = parseGeoraster(ranger_projections_agg_file).then(georaster => {
+		// Ranger projections aggregate
+		var ranger_projections_agg_promise = parseGeoraster(ranger_projections_agg_file).then(georaster => {
 
-						// GeoRasterLayer for range_projections (Band 1)
-						var ranger_projections_agg = new GeoRasterLayer({
-								georaster,
-								opacity: 1,//0.75,
-								resolution: 128, // 128 seems to be a good compromise for now
-								pane: "ranger_projections_agg",
-								pixelValuesToColorFn: function(pixelValues){
-										var pixelValue = pixelValues[0]; // Choose first band!
-										if (pixelValue >= 1 && pixelValue <= 2){
-												var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
-												return colour;
-										} else {
-												return undefined;
-										}
-								}
-						});
-
-						return ranger_projections_agg;
+			// GeoRasterLayer for range_projections (Band 1)
+			var ranger_projections_agg = new GeoRasterLayer({
+					georaster,
+					opacity: 1,//0.75,
+					resolution: 128, // 128 seems to be a good compromise for now
+					pane: "ranger_projections_agg",
+					pixelValuesToColorFn: function(pixelValues){
+						var pixelValue = pixelValues[0]; // Choose first band!
+						if (pixelValue >= 1 && pixelValue <= 2){
+								var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
+									return colour;
+							} else {
+									return undefined;
+							}
+					}
 				});
+
+				return ranger_projections_agg;
+		});
 
         // Ranger projections
         var ranger_projections_promise = parseGeoraster(ranger_projections_file).then(georaster => {
@@ -227,62 +225,15 @@
             return ranger_projections;
         });
 
-				// GBM projections aggregate
-				var gbm_projections_agg_promise = parseGeoraster(gbm_projections_agg_file).then(georaster => {
-
-						// GeoRasterLayer for gbm_projections (Band 1)
-						var gbm_projections_agg = new GeoRasterLayer({
-								georaster,
-								opacity: 1,//0.75,
-								resolution: 128, // 128 seems to be a good compromise for now
-								pane: "gbm_projections_agg",
-								pixelValuesToColorFn: function(pixelValues){
-										var pixelValue = pixelValues[0];
-										if (pixelValue >= 1 && pixelValue <= 2){
-												var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
-												return colour;
-										} else {
-												return undefined;
-										}
-								}
-						});
-
-						return gbm_projections_agg;
-				});
-
-        // GBM projections
-        var gbm_projections_promise = parseGeoraster(gbm_projections_file).then(georaster => {
-
-            // GeoRasterLayer for gbm_projections (Band 1)
-            var gbm_projections = new GeoRasterLayer({
-                georaster,
-                opacity: 1,//0.75,
-                resolution: 128, // 128 seems to be a good compromise for now
-                pane: "gbm_projections",
-                pixelValuesToColorFn: function(pixelValues){
-                    var pixelValue = pixelValues[0];
-                    if (pixelValue >= 1 && pixelValue <= 2){
-                        var colour = (pixelValue == 1 ? "DarkGreen": "DarkGoldenRod");
-                        return colour;
-                    } else {
-                        return undefined;
-                    }
-                }
-            });
-
-            return gbm_projections;
-        });
-
         // Next: wait for georaster layer promises to be fulfilled, then add layers to map!
 
         // Define async functions to add GeoRaster layers
         async function add_geo_rasters(){
 
             // Wait for promises to be evaluated
-						await gbm_projections_agg_promise;
-            await gbm_projections_promise;
-						await ranger_projections_agg_promise;
+			await ranger_projections_agg_promise;
             await ranger_projections_promise;
+
             await disturbance_since_2015_promise;
 
             // Add layers to map / control
@@ -291,47 +242,29 @@
             // For this see map panes defined above.
 
             disturbance_since_2015_promise.then(disturbance_2015 => {
-
+                // Add layer to map
+                disturbance_2015.addTo(map);
                 // Add layer to layer control (but not to map)
                 layerControl.addOverlay(
                     disturbance_2015,
                     "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Disturbance (2015 - 2020)</strong></span>").addTo(map);
             });
 
-						ranger_projections_promise.then(ranger_projections => {
-
+			ranger_projections_promise.then(ranger_projections => {
+                // Add layer to map
+                ranger_projections.addTo(map);
                 // Add layer to layer control (but not to map)
                 layerControl.addOverlay(
                         ranger_projections,
                         "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Random Forest Projections</strong></span>").addTo(map);
             });
 
-						ranger_projections_agg_promise.then(ranger_projections_agg => {
-
+			ranger_projections_agg_promise.then(ranger_projections_agg => {
                 // Add layer to layer control (but not to map)
                 layerControl.addOverlay(
                         ranger_projections_agg,
                         "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Random Forest Projections (100 m aggregate)</strong></span>").addTo(map);
             });
-
-            gbm_projections_promise.then(gbm_projections => {
-
-                // Add layer to map
-                gbm_projections.addTo(map);
-
-                // Add layer to layer control
-                layerControl.addOverlay(
-                    gbm_projections,
-                    "<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections</strong> (default)</span>");
-            });
-
-						gbm_projections_agg_promise.then(gbm_projections_agg => {
-
-								// Add layer to layer control (but not to map)
-								layerControl.addOverlay(
-												gbm_projections_agg,
-												"<span style='font: 14px Arial, Helvetica, sans-serif'><strong>Gradient Boosting Projections (100 m aggregate)</strong></span>").addTo(map);
-						});
 
             // Finally add layer control object to map
             layerControl.addTo(map);
@@ -364,7 +297,7 @@
         var title = L.control({ position: "bottomleft" });
         title.onAdd = function(map) {
                 var div = L.DomUtil.create("div", "legend");
-                div.innerHTML += "<h4>Denmark Forest Quality v0.9.0</h4>";
+                div.innerHTML += "<h4>Denmark Forest Quality v1.0.0 - Best Model</h4>";
                 div.innerHTML += '<span style="margin: 0 0 0 14px;">Assmann et al. (in prep).<br></span>';
                 div.innerHTML += '<span style="margin: 0 0 0 14px;">Contact: <a href="mailto:j.assmann@bio.au.dk">j.assmann@bio.au.dk</a><br></span>';
                 div.innerHTML += "<span style='margin: 0 14px 0 14px'> <img src='au_logo.png' style='width: 125; height:25px;'>";
