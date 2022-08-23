@@ -111,9 +111,9 @@ biowide_regions <- mutate(
                  #"**",
                  "</span>",
                  "<span style='font-size:10pt; color:black'>",
-                 "<br>Accuracy: ", accuracy,
-                 "<br>Sensitivity: ", sens,
-                 "<br>User Accuracy: ", useracc,
+                 "<br>Accuracy: ", formatC(accuracy, digits = 2, format = "f"),
+                 "<br>Sensitivity: ", formatC(sens, digits = 2, format = "f"),
+                 "<br>User Accuracy: ", formatC(useracc, digits = 2, format = "f"),
                  "</span>"))
 
 # Build forest type panels
