@@ -191,7 +191,7 @@ project_model <- function(model_fit,
   cat("\nGathering masks ...\n")
   inland_mask <- ecodes_vars[grepl("inland_water", ecodes_vars)]
   sea_mask <- ecodes_vars[grepl("sea", ecodes_vars)]
-  forest_mask_file <- "data/basemap_forests/forest_mask.tif"
+  forest_mask_file <- "data/predictor_data/treetype/forest_mask_bjer_above_half_ha.tif"
   
   # Prepare parallel environmemt
   cat("Preparing parallel environment ...\n")
@@ -250,7 +250,16 @@ project_model <- function(model_fit,
   return(NULL)
 }
 
-## 3) Execute projections
+## 3) Execute projections (biowide models)
 project_model(gbm_fit, "gbm_biowide", 46)
 project_model(rf_fit, "ranger_biowide", 46)
+
+## 4) Execute projections (derek's stratification models)
+rm(gbm_fit)
+rm(rf_fit)
+load("data/models/final_gbm_model_pixel_derek.Rda")
+load("data/models/final_ranger_model_pixel_derek.Rda")
+project_model(gbm_fit, "gbm_derek", 46)
+project_model(rf_fit, "ranger_derek", 46)
+
 ## End of file
