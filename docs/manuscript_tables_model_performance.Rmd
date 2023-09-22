@@ -1,0 +1,172 @@
+---
+title: "Model performance tables for manuscript"
+author: "Jakob J. Assmann"
+date: "2023-09-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include = FALSE}
+# Dependencies
+library(caret)
+library(tidyverse)
+library(sf)
+library(ranger)
+library(gbm)
+library(kableExtra)
+
+# Load data
+load("../data/training_data/pixel_training_biowide.Rda")
+load("../data/training_data/pixel_valid_biowide.Rda")
+
+train_data_biowide <- pixel_training_biowide %>% 
+  ungroup() %>%
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
+test_data_biowide <- pixel_valid_biowide %>% 
+  ungroup() %>%
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
+
+load("../data/training_data/pixel_training_derek.Rda")
+load("../data/training_data/pixel_valid_derek.Rda")
+
+train_data_derek <- pixel_training_derek %>% 
+  ungroup() %>%
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
+test_data_derek <- pixel_valid_derek %>% 
+  ungroup() %>%
+  dplyr::select(-sample_id, 
+                -polygon_source,  
+                -biowide_region, 
+                -dereks_stratification,
+                -cell)
+
+
+# Load models
+load("../data/models/final_gbm_model_pixel_biowide.Rda")
+gbm_fit_biowide <- gbm_fit
+rm(gbm_fit)
+
+load("../data/models/final_gbm_model_pixel_derek.Rda")
+gbm_fit_derek <- gbm_fit
+rm(gbm_fit)
+
+load("../data/models/final_ranger_model_pixel_biowide.Rda")
+rf_fit_biowide <- rf_fit
+rm(rf_fit)
+
+load("../data/models/final_ranger_model_pixel_derek.Rda")
+rf_fit_derek <- rf_fit
+rm(rf_fit)
+
+# Calculate predictions 
+test_preds_gbm_biowide <- predict(gbm_fit_biowide, newdata = test_data_biowide)
+test_preds_gbm_derek <- predict(rf_fit_derek, newdata = test_data_derek)
+test_preds_rf_biowide <- predict(rf_fit_biowide, newdata = test_data_biowide)
+test_preds_rf_derek <- predict(rf_fit_derek, newdata = test_data_derek)
+
+# Calculate confusion matrices
+conf_mat_gbm_biowide <- confusionMatrix(data = test_preds_gbm_biowide, test_data_biowide$forest_value)
+conf_mat_gbm_derek <- confusionMatrix(data = test_preds_gbm_derek, test_data_derek$forest_value)
+conf_mat_rf_biowide <- confusionMatrix(data = test_preds_rf_biowide, test_data_biowide$forest_value)
+conf_mat_rf_derek <- confusionMatrix(data = test_preds_rf_derek, test_data_derek$forest_value)
+
+```
+
+## Table S3
+Cross-validation results
+```{r, echo = FALSE, messages = FALSE, warnings = FALSE} 
+list(rf_fit_biowide,
+     rf_fit_derek,
+     gbm_fit_biowide,
+     gbm_fit_derek) %>%
+  map(function(x){
+    left_join(x$bestTune, x$results) %>%
+    select(ROC, Sens, Spec) %>%
+      round(3) %>%
+      setNames(c("ROC", "Sensitivity", "Specificity"))
+  }) %>%
+  bind_rows() %>%
+  mutate(model_type = c("random forest", "random forest", "gbm", "gmb"),
+         stratification = c("Biowide", "Derek", "Biowide", "Derek")) %>%
+  relocate(model_type, stratification) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
+Held-out validation results
+```{r, echo = FALSE}
+list(conf_mat_rf_biowide,
+     conf_mat_rf_derek,
+     conf_mat_gbm_biowide,
+     conf_mat_gbm_derek) %>%
+  map(function(x){
+    df <- data.frame(
+      Accuracy = x$overall[1],
+      Error = 1 - x$overall[1],
+      Sensitivity = x$table[1,1] / ( x$table[1,1] +  x$table[2,1]),
+      Specificity = x$table[2,2] / ( x$table[2,2] +  x$table[1,2]),
+      Fall_out = x$table[1,2] / ( x$table[1,2] +  x$table[2,2]),
+      Percision = x$table[1,1] / ( x$table[1,1] +  x$table[1,2])) %>%
+      round(3)
+    rownames(df) <- NULL
+    df
+  }) %>%
+  bind_rows() %>%
+  mutate(model_type = c("random forest", "random forest", "gbm", "gmb"),
+         stratification = c("Biowide", "Derek", "Biowide", "Derek")) %>%
+  relocate(model_type, stratification) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+```
+
+## Table S7
+```{r, echo = FALSE}
+rf_rank <- list(
+  rf_fit_biowide,
+  rf_fit_derek)  %>%
+  map(function(x){
+    df <- varImp(x)$importance %>%
+      arrange(desc(Overall)) %>%
+      mutate(variable = rownames(.),
+            n = format(1:nrow(.), digits = 2)) %>%
+      mutate(rank = paste0(n, " (", format(round(Overall, 2), nsmall = 2), ")")) %>%
+      select(-Overall, -n)
+    rownames(df) <- NULL
+    df
+  }) %>%
+  reduce(full_join, by = c("variable")) %>%
+  set_names(c("variable", "rf_biowide", "rf_derek"))
+gbm_rank <- list(
+  gbm_fit_biowide,
+  gbm_fit_derek)  %>%
+  map(function(x){
+    df <- summary(x) %>%
+      arrange(desc(rel.inf)) %>%
+      mutate(variable = var,
+            n = format(1:nrow(.), digits = 2)) %>%
+      mutate(rank = paste0(n, " (", format(round(rel.inf, 2), nsmall = 2), ")")) %>%
+      select(-rel.inf, -n, -var)
+    rownames(df) <- NULL
+    df
+  }) %>%
+  reduce(full_join, by = c("variable")) %>%
+  set_names(c("variable", "gbm_biowide", "gbm_derek"))
+full_join(rf_rank, gbm_rank) %>%
+  arrange(rf_biowide) %>%
+  kable() %>% kable_classic(font_size = 12, full_width = F, position = "left")
+
+```
