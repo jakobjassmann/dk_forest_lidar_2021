@@ -76,7 +76,7 @@ rm(rf_fit)
 
 # Calculate predictions 
 test_preds_gbm_biowide <- predict(gbm_fit_biowide, newdata = test_data_biowide)
-test_preds_gbm_derek <- predict(rf_fit_derek, newdata = test_data_derek)
+test_preds_gbm_derek <- predict(gbm_fit_derek, newdata = test_data_derek)
 test_preds_rf_biowide <- predict(rf_fit_biowide, newdata = test_data_biowide)
 test_preds_rf_derek <- predict(rf_fit_derek, newdata = test_data_derek)
 
