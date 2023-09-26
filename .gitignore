@@ -46,6 +46,7 @@ vignettes/*.pdf
 /data/response_data/
 /data/basemap_forests/
 /data/forest_change_cs/
+/data/orthophotos/
 
 # MacOS bin files
 *DS_Store
