@@ -263,7 +263,7 @@ plot_ortho_n_qual_dist <- function(ortho, ortho_name, qual = T, dist = F,
 }
 
 mols_bjerge_grob_2014_qual <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2014,
-                                                "Forest Conservation Value", qual = T, dist = F, 
+                                                "Conservation Value", qual = T, dist = F, 
                                                 dist_col = "#C575D9")
 
 mols_bjerge_grob_2021_dist <- plot_ortho_n_qual_dist(mols_bjerge_forest_ortho_2021,
