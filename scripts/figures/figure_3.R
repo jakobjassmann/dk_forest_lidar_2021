@@ -37,7 +37,7 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
              0.85 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            y = ext(forest_quality)[3] +
              0.9325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           label = "High Quality", 
+           label = "High Value", 
            colour = "black",
            size = 14 * 0.35,
            hjust = 0,
@@ -58,7 +58,7 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
              0.85 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            y = ext(forest_quality)[3] +
              0.8325 * (ext(forest_quality)[4] - ext(forest_quality)[3]),
-           label = "Low Quality", 
+           label = "Low Value", 
            colour = "black",
            size = 14 * 0.35,
            hjust = 0,
@@ -91,7 +91,7 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
            size = 14 * 0.35,
            hjust = 0.5,
            vjust = 0.5) +
-  labs(title = "Estimated High Quality Forest: 1420 km² (141958 ha)") +
+  labs(title = "Estimated High Conservation Value Forest: 1420 km² (141958 ha)") +
   theme_map() +
   theme(legend.position = "none",
         plot.margin = unit(c(0.1,0,0,0), "in"),
