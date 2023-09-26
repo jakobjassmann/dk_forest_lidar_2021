@@ -91,7 +91,7 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
            size = 14 * 0.35,
            hjust = 0.5,
            vjust = 0.5) +
-  labs(title = "Estimated High Conservation Value Forest: 1420 km² (141958 ha)") +
+  labs(title = "Estimated High Conservation Value Forest: 1999.61 km2 (199961 ha)") +
   theme_map() +
   theme(legend.position = "none",
         plot.margin = unit(c(0.1,0,0,0), "in"),
