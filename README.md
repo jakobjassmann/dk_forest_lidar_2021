@@ -2,7 +2,7 @@
 
 **Summary reports, data visualisations and downlads can be found on:**<br> https://jakobjassmann.github.io/dk_forest_lidar_2021/
 
-Last update: 16 March 2022.<br>
+Last update: 26 September 2023.<br>
 
 Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Signe Normand 
 
@@ -120,7 +120,7 @@ Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A.
 
 ## 6. License
 
-All code (.R files) are licensed under a modified MIT license (see license text [ADD]()).<br>
+All code (.R files) are licensed under a modified MIT license (see [license text](https://github.com/jakobjassmann/dk_forest_lidar_2021/blob/main/LICENSE)).<br>
 All other content of this repository, including: figures, raster, tabular and vector data are licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a><a rel="license" href="http://creativecommons.org/licenses/by/4.0/"> <img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/80x15.png" /></a>
 
 When using code or other content from this repostiory in scientific work, please use the citation provided above to acknwoledge the authors. 
