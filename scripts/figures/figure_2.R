@@ -60,6 +60,8 @@ biowide_regions$accuracy <- sapply(performance_list,
                                    function(x) round(x$overall["Accuracy"],2))[row_order]
 biowide_regions$sens <- sapply(performance_list, 
                                function(x) round(x$byClass["Sensitivity"],2))[row_order]
+
+
 biowide_regions$useracc <- sapply(performance_list, 
                                   function(x) round(x$byClass["Pos Pred Value"],2))[row_order]
 
@@ -74,14 +76,14 @@ biowide_regions <- mutate(
 
 biowide_regions <- 
   mutate(biowide_regions,
-         x = x_cen + map_span_x * c(-0.10,  # Nordjlland
+         x = x_cen + map_span_x * c(-0.25,  # Nordjlland
                                     -0.15,  # Vestjylland
                                     0.30,  # Oestjylland
                                     0.25,  # Sjaelland
-                                    -0.00,  # Bornholm
-                                    -0.20), # Fune_Lolland
+                                    -0.10,  # Bornholm
+                                    -0.30), # Fune_Lolland
          
-         y = y_cen + map_span_y * c( 0.10,  # Nordjlland
+         y = y_cen + map_span_y * c( -0.10,  # Nordjlland
                                      0.10,  # Vestjylland
                                      0.30,  # Oestjylland
                                      0.00,  # Sjaelland
@@ -101,8 +103,23 @@ biowide_regions <-
                    1) # Fune_Lolland
   )
 
-biowide_regions$region[6] <- "Fune-Lolland"
+# Update region names
+biowide_regions$region <- factor(
+  c("Northern<br>Jutland", 
+    "Western<br>Jutland", 
+    "Eastern<br>Jutland", 
+    "Zealand", 
+    "Bornholm", 
+    "Funen-Lolland-Falster-Møn"),
+  levels = 
+    c("Northern<br>Jutland", 
+      "Western<br>Jutland", 
+      "Eastern<br>Jutland", 
+      "Zealand", "Bornholm", 
+      "Funen-Lolland-Falster-Møn")
+)
 
+# Generate labels
 biowide_regions <- mutate(
   biowide_regions,
   label = paste0("<span style='font-size:16pt'>",
@@ -188,18 +205,21 @@ plot_ortho <- function(ortho, ortho_name, frame_colour = "black",
 }
 
 p25_grob <- plot_ortho(p25_ortho, "§25 Forest", high_quality_col)
-old_growth_grob <- plot_ortho(old_growth_ortho, "Private Old Growth",
+old_growth_grob <- plot_ortho(old_growth_ortho, "Private Untouched",
                               high_quality_col)
 plantation_grob <- plot_ortho(plantation_ortho, "Plantation",
                               low_quality_col)
 
 # Set map extent
-main_panel_xlim <- st_bbox(biowide_regions)[c(1,3)] * c(0.6, 1.15)
-main_panel_ylim <- st_bbox(biowide_regions)[c(2,4)] * c(0.98, 1.0125)
+main_panel_xlim <- st_bbox(biowide_regions)[c(1,3)] * c(0.70, 1.05)
+main_panel_ylim <- st_bbox(biowide_regions)[c(2,4)] * c(0.99, 1.0025)
 main_panel_width <- main_panel_xlim[2] - main_panel_xlim[1]
 main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
 
-main_panel <- ggplot() + 
+main_panel_height/main_panel_width
+
+main_panel <- 
+  ggplot() + 
   geom_sf(#aes(colour = region,
           #    fill = region), 
           size = 0.5,
@@ -214,20 +234,7 @@ main_panel <- ggplot() +
                 data = biowide_regions,
                 fill = NA,
                 label.color = NA) +
-  # scale_colour_manual(values = c("#0F403F", # Bornholm 
-  #                                "#3D8A88", # Fune_Lolland 
-  #                                "#C575D9", # Nordjlland 
-  #                                "#7D3E8C", # Oestjylland 
-  #                                "#62B5B4", # Sjaelland 
-  #                                "#B88AC5")) +  # Vestjylland
-  # scale_fill_manual(values = c("#F5FAFA", # Bornholm
-  #                              "#F5FAFA", # Fune_Lolland
-  #                              "#F9F5FA", # Nordjlland
-  #                              "#F9F5FA", # Oestjylland
-  #                              "#F5FAFA", # Sjaelland
-  #                              "#F9F5FA")) + # Vestjylland
-  # new_scale_color() +
-  geom_sf(data = pixel_training_data, # %>% sample_n(20000), 
+  geom_sf(data = pixel_training_data, # %>% sample_n(20), 
           mapping = aes(colour = forest_value),
           size = 0.001) +
   scale_colour_manual(values = c(high_quality_col,
@@ -245,7 +252,7 @@ main_panel <- ggplot() +
            x = main_panel_xlim[1] + 
              0.63 * main_panel_width,
            y = 11000 + main_panel_ylim[1] +
-             1.13 * main_panel_height,
+             1.15 * main_panel_height,
            label = "Training: High Value Pixels", 
            colour = "black",
            size = 14 * 0.35,
@@ -257,16 +264,16 @@ main_panel <- ggplot() +
            xmax = 20000 + main_panel_xlim[1] + 
              0.59 * main_panel_width,
            ymin = main_panel_ylim[1] +
-             1.13 * main_panel_height,
+             1.15 * main_panel_height,
            ymax = 20000 + main_panel_ylim[1] +
-             1.13 * main_panel_height,
+             1.15 * main_panel_height,
            color = "black",
            fill = high_quality_col) +
   annotate("text", 
            x = main_panel_xlim[1] + 
              0.63 * main_panel_width,
            y = 11000 + main_panel_ylim[1] +
-             1.08 * main_panel_height,
+             1.09 * main_panel_height,
            label = "Training: Low Value Pixels", 
            colour = "black",
            size = 14 * 0.35,
@@ -278,9 +285,9 @@ main_panel <- ggplot() +
            xmax = 20000 + main_panel_xlim[1] + 
              0.59 * main_panel_width,
            ymin = main_panel_ylim[1] +
-             1.08 * main_panel_height,
+             1.09 * main_panel_height,
            ymax = 20000 +main_panel_ylim[1] +
-             1.08 * main_panel_height,
+             1.09 * main_panel_height,
            color = "black",
            fill = low_quality_col) +
   annotate("rect",
@@ -317,3 +324,4 @@ plot_grid(main_panel,
           .,
           base_height = 6,
           bg = "white")
+
