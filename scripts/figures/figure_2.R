@@ -86,7 +86,7 @@ biowide_regions <-
          y = y_cen + map_span_y * c( -0.10,  # Nordjlland
                                      0.10,  # Vestjylland
                                      0.30,  # Oestjylland
-                                     0.00,  # Sjaelland
+                                     0.05,  # Sjaelland
                                      -0.10,  # Bornholm
                                      -0.20), # Fune_Lolland
          hjust = c(1, # Nordjlland
@@ -291,17 +291,17 @@ main_panel <-
            color = "black",
            fill = low_quality_col) +
   annotate("rect",
-           xmin = main_panel_xlim[1] + 
-             0.05 * main_panel_width,
+           xmin =main_panel_xlim[1] + 
+             0.01 * main_panel_width,
            xmax = 100000 + main_panel_xlim[1] + 
-             0.05 * main_panel_width,
-           ymin = main_panel_ylim[1] + 20000,
-           ymax = main_panel_ylim[1] + 20000 + 5000,
+             0.01 * main_panel_width,
+           ymin = main_panel_ylim[1] + 5000,
+           ymax = main_panel_ylim[1] + 5000 + 5000,
            fill = "black") +
   annotate("text", 
            x = 50000 + main_panel_xlim[1] + 
-             0.05 * main_panel_width,
-           y = main_panel_ylim[1] + 20000 + 25000,
+             0.01 * main_panel_width,
+           y = main_panel_ylim[1] + 5000 + 25000,
            label = "100 km", 
            colour = "black",
            size = 14 * 0.35,
@@ -319,7 +319,7 @@ plot_grid(main_panel,
                     plantation_grob,
                     nrow = 3),
           ncol = 2,
-          rel_widths = c(2,1)) %>%
+          rel_widths = c(2.5,1)) %>%
   save_plot("docs/figures/figure_2.png", 
           .,
           base_height = 6,
