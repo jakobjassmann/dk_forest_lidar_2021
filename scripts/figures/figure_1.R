@@ -11,6 +11,20 @@ library(ggtext)
 
 # Load shape files 
 biowide_regions <- read_sf("data/stratification/biowide_georegions/biowide_zones.shp")
+biowide_regions$region <- factor(
+  c("Northern<br>Jutland", 
+  "Western<br>Jutland", 
+  "Eastern<br>Jutland", 
+  "Zealand", 
+  "Bornholm", 
+  "Funen-Lolland<br>Falster-Møn"),
+  levels = 
+  c("Northern<br>Jutland", 
+  "Western<br>Jutland", 
+  "Eastern<br>Jutland", 
+  "Zealand", "Bornholm", 
+  "Funen-Lolland<br>Falster-Møn")
+)
 
 biowide_regions <- mutate(
   biowide_regions,
@@ -23,12 +37,12 @@ biowide_regions <- mutate(
 
 biowide_regions <- 
   mutate(biowide_regions,
-         x = x_cen + map_span_x * c(-0.10,  # Nordjlland
-                                    -0.15,  # Vestjylland
-                                    0.30,  # Oestjylland
+         x = x_cen + map_span_x * c(-0.3,  # Nordjlland
+                                    -0.35,  # Vestjylland
+                                    0.5,  # Oestjylland
                                     0.20,  # Sjaelland
                                     -0.00,  # Bornholm
-                                    -0.20), # Fune_Lolland
+                                    -0.0), # Fune_Lolland
          
          y = y_cen + map_span_y * c( 0.10,  # Nordjlland
                                      0.10,  # Vestjylland
@@ -36,12 +50,12 @@ biowide_regions <-
                                      0.10,  # Sjaelland
                                      -0.10,  # Bornholm
                                      -0.20), # Fune_Lolland
-         hjust = c(1, # Nordjlland
-                   1, # Vestjylland
-                   0, # Oestjylland
+         hjust = c(0.5, # Nordjlland
+                   0.5, # Vestjylland
+                   0.5, # Oestjylland
                    0, # Sjaelland
                    0, # Bornholm
-                   0),# Fune_Lolland
+                   0.5),# Fune_Lolland
          vjust = c(0, # Nordjlland
                    1, # Vestjylland
                    0, # Oestjylland
@@ -49,7 +63,6 @@ biowide_regions <-
                    1, # Bornholm
                    1) # Fune_Lolland
   )
-biowide_regions$region[6] <- "Fune-Lolland"
 
 # Set map extent
 main_panel_xlim <- st_bbox(biowide_regions)[c(1,3)] * c(0.6, 1.15)
@@ -61,7 +74,7 @@ main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
 (map_plot <- ggplot() + 
     geom_sf(aes(colour = region,
                 fill = region), 
-            size = 0.5,
+            linewidth = 0.5,
             data = biowide_regions) +
     geom_richtext(aes(x = x, 
                       y = y, 
@@ -73,18 +86,20 @@ main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
                    fill = NA,
                   label.color = NA
               ) +
-    scale_colour_manual(values = c("#0F403F", # Bornholm 
-                                   "#3D8A88", # Fune_Lolland 
-                                   "#C575D9", # Nordjlland 
+    scale_colour_manual(values = c("#C575D9", # Nordjlland 
+                                   "#B88AC5", # Vestjylland
                                    "#7D3E8C", # Oestjylland 
                                    "#62B5B4", # Sjaelland 
-                                   "#B88AC5")) +  # Vestjylland
-    scale_fill_manual(values = c("#F5FAFA", # Bornholm
-                                 "#F5FAFA", # Fune_Lolland
-                                 "#F9F5FA", # Nordjlland
+                                   "#0F403F", # Bornholm 
+                                   "#3D8A88"  # Fune_Lolland 
+                                  )) +  
+    scale_fill_manual(values = c("#F5FAFA", # Nordjlland
+                                 "#F5FAFA", # Vestjylland
                                  "#F9F5FA", # Oestjylland
-                                 "#F5FAFA", # Sjaelland
-                                 "#F9F5FA")) + # Vestjylland
+                                 "#F9F5FA", # Sjaelland
+                                 "#F5FAFA", # Bornholm
+                                 "#F9F5FA"  # Fune_Lolland
+                                 )) + 
     coord_sf(clip = "off",
              crs = st_crs(biowide_regions),
              xlim = main_panel_xlim,
@@ -97,6 +112,4 @@ save_plot("docs/figures/map_for_figure_1.png",
           map_plot,
           base_asp = main_panel_width / main_panel_height,
           bg = "white")
-  
-  
 
