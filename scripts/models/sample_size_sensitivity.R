@@ -9,10 +9,12 @@ library(caret)
 library(tidyverse)
 library(sf)
 library(pbapply)
+library(parallel)
 library(ranger)
 library(gbm)
 library(ggplot2)
 library(cowplot)
+library(gt)
 
 # Set pseudo random generator seed
 set.seed(240601)
@@ -111,10 +113,10 @@ vis_results <- function(results_df, model_name){
       geom_point() +
       annotate("point", x = 30000, y = results_df$accuracy[3],
                colour = "red") +
-      annotate("text", x = 10000, y = Inf, vjust = 1.5, hjust = 0,
+      annotate("text", x = 0, y = Inf, vjust = 1.5, hjust = 0,
                label = model_name, size = 14 / .pt) +
       scale_x_continuous(limits = c(0, 125000)) +
-      #scale_y_continuous(limits = c(0.75, 0.9)) +
+      scale_y_continuous(limits = c(0.75, 0.9)) +
       labs(x = "Sample size", y = "Accuracy") +
       theme_cowplot(),
     ggplot(results_df, aes(x = n_samples, y = speed)) +
@@ -122,10 +124,10 @@ vis_results <- function(results_df, model_name){
       geom_point() +
       annotate("point", x = 30000, y = results_df$speed[3],
                colour = "red") +
-      annotate("text", x = 10000, y = Inf, vjust = 1.5, hjust = 0,
+      annotate("text", x = 0, y = Inf, vjust = 1.5, hjust = 0,
                label = model_name, size = 14 / .pt) +
       scale_x_continuous(limits = c(0, 125000)) +
-      # scale_y_continuous(limits = c(0, 500)) +
+      scale_y_continuous(limits = c(0, 1500)) +
       labs(x = "Sample size", y = "Training time (s)") +
       theme_cowplot()
   )
@@ -149,7 +151,7 @@ results_ranger_biowide <- data.frame(
 )
 
 plot_ranger_biowide <- vis_results(results_ranger_biowide,
-                                   "Random Forest\nBiowide")
+                                   "Random Forest Biowide")
 
 ## 2) GBM biowide
 
@@ -208,7 +210,7 @@ results_ranger_derek <- data.frame(
 )
 
 plot_ranger_derek <- vis_results(results_ranger_derek,
-                                   "Random Forest\nSustainScapes")
+                                   "Random Forest SustainScapes")
 
 ## 5) GBM Sustainscapes
 
@@ -233,14 +235,62 @@ plot_gbm_derek <- vis_results(results_gbm_derek,
 
 ## 6) Generate summary plots
 (ranger_sensitivity <- plot_grid(plot_ranger_biowide,
-                                plot_ranger_derek,
-                                nrow = 2,
-                                align = "hv"))
-
+                                 plot_ranger_derek,
+                                 nrow = 2,
+                                 align = "hv",
+                                 labels = "auto"))
+save_plot("docs/figures/sample_sensitivity_ranger.png", 
+          ranger_sensitivity,
+          nrow = 2,
+          ncol = 2,
+          bg = "white")
 (gbm_sensitivity <- plot_grid(plot_gbm_biowide,
-                                plot_gbm_derek,
-                                nrow = 2,
-                                align = "hv"))
+                              plot_gbm_derek,
+                              nrow = 2,
+                              align = "hv",
+                              labels = "auto"))
+save_plot("docs/figures/sample_sensitivity_gbm.png", 
+          gbm_sensitivity,
+          nrow = 2,
+          ncol = 2,
+          bg = "white")
+
+# Export table as html
+bind_rows(results_ranger_biowide %>%
+            mutate(model_type = "Random Forest",
+                   stratification = "Biowide") %>%
+            relocate(c(4,5)),
+          results_ranger_derek %>%
+            mutate(model_type = "Random Forest",
+                   stratification = "SustainScapes") %>%
+            relocate(c(4,5)),
+          results_gbm_biowide %>%
+            mutate(model_type = "gbm",
+                   stratification = "Biowide") %>%
+            relocate(c(4,5)),
+          results_gbm_derek %>%
+            mutate(model_type = "gbm",
+                   stratification = "SustainScapes") %>%
+            relocate(c(4,5))) %>%
+  mutate(accuracy = round(accuracy, 2),
+         speed = round(speed)) %>%
+  select(`Model type` = model_type,
+         `Stratification` = stratification,
+         `Samples (n)` = n_samples,
+         `Accuracy` = accuracy,
+         `Speed (s)` = speed) %>%
+  group_by(`Model type`, `Stratification`) %>%
+  group_map(function(x, ...) x %>%
+              gt(rowname_col = "Samples (n)") %>%
+              as_raw_html()) %>% 
+  data.frame() %>%
+  setNames(c("Random Forest Biowide",
+             "Random Forest SustainScapes",
+             "gbm Biowide",
+             "gbm SunstainScapes")) %>%
+  gt() %>%
+  fmt_markdown(columns = TRUE) %>%
+  gtsave("docs/training_size_sensitivity.html")
 
 # Save results for back up 
 save(results_ranger_biowide, 
@@ -248,3 +298,93 @@ save(results_ranger_biowide,
      results_gbm_derek,
      results_gbm_biowide,
      file = "data/models/sensitivity_analysis.Rda")
+
+## 7) Assess nearest neighbours
+load("data/training_data/pixel_training_sensitivity.Rda")
+pixel_training_data <- pixel_training_data %>% 
+  select(-contains("mask")) %>%
+  select(-contains("250")) %>%
+  select(-contains("mean_110")) %>%
+  select(-contains("proportion")) %>%
+  mutate(forest_value = factor(forest_value)) %>%
+  na.omit()
+st_crs(pixel_training_data)
+
+# Get a feeling for how close points are to eachother
+sample_1000 <- sample_n(pixel_training_data, 1000)
+nearest_feat <- st_nearest_feature(sample_1000)
+dist_nf <- sapply(1:1000, function(x){
+  st_distance(sample_1000[x,], sample_1000[nearest_feat[x],])
+})
+mean(dist_nf)
+max(dist_nf)
+min(dist_nf)
+
+# define function to calculate distances to nearest nieghbour based on buffering
+dist_nearest_neighbour <- function(current_id, buffer, sf_obj){
+  neighbours <-  sf_obj %>%
+    filter(sample_id == current_id) %>%
+    st_buffer(buffer) %>%
+    st_intersects(sf_obj) %>%
+    unlist() %>%
+    sf_obj[.,] %>%
+    mutate(., nearest_feat = st_nearest_feature(.))
+  current_feat <- neighbours %>%
+    filter(sample_id == current_id)
+  as.numeric(st_distance(current_feat, neighbours[current_feat$nearest_feat,]))
+}
+cl <- makeCluster(48)
+clusterEvalQ(cl, library(sf))
+clusterEvalQ(cl, library(dplyr))
+
+# Calculate distance for n_samples
+nn_dists <- map(n_samples, function(x){
+  cat("n samples:", x, "\n")
+  sub_sample <- sample_n(pixel_training_data, round(x * 0.2)) %>%
+    select(sample_id, geometry)
+  dists <- pblapply(sub_sample$sample_id,
+                    dist_nearest_neighbour,
+                    buffer = 10000, 
+                    sf_obj = sub_sample, 
+                    cl = cl) %>% 
+    unlist()
+  return(data.frame(n_samples = x,
+                    mean_dist_nn = mean(dists, na.rm = T),
+                    median_dist_nn = median(dists, na.rm = T),
+                    min_dist_nn = min(dists, na.rm = T),
+                    max_dist_nn = max(dists, na.rm = T),
+                    n_na = sum(is.na(dists)))
+  )
+}) %>% 
+  bind_rows()
+nn_dists %>%
+  gt() %>%
+  gtsave("docs/nearest_neighbour_sensitivit.html")
+
+# Calculate density for actual training dataset
+rm(pixel_training_data)
+load("data/training_data/pixel_training.Rda")
+pixel_training_data <- pixel_training_data %>% 
+  select(-contains("mask")) %>%
+  select(-contains("250")) %>%
+  select(-contains("mean_110")) %>%
+  select(-contains("proportion")) %>%
+  mutate(forest_value = factor(forest_value)) %>%
+  na.omit()
+st_crs(pixel_training_data)
+pixel_training_data_high <- pixel_training_data %>% filter(forest_value == "high")
+pixel_training_data_low <- pixel_training_data %>% filter(forest_value == "low")
+
+dist_true_training_high <- pblapply(pixel_training_data_high$sample_id,
+                               dist_nearest_neighbour,
+                               buffer = 10000, 
+                               sf_obj = pixel_training_data_high, 
+                               cl = cl) %>% 
+  unlist()
+pixel_training_data_low <- pblapply(pixel_training_data_low$sample_id,
+                                    dist_nearest_neighbour,
+                                    buffer = 10000, 
+                                    sf_obj = pixel_training_data_low, 
+                                    cl = cl) %>% 
+  unlist()
+
