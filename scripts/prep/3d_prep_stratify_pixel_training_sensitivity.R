@@ -18,7 +18,8 @@ pixel_training_data <- pixel_training_data %>%
   select(-contains("mask")) %>%
   select(-contains("250")) %>%
   select(-contains("mean_110")) %>%
-  select(-contains("proportion")) %>%
+  select(-contains("proportion")) %>% 
+  select(-treetype_bjer_con) %>%
   mutate(forest_value = factor(forest_value)) %>%
   na.omit()
 

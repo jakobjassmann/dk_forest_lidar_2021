@@ -29,31 +29,51 @@ load("data/training_data/pixel_valid_derek_sensitivity.Rda")
 train_data <- pixel_training_biowide %>% 
   ungroup() %>%
   dplyr::select(-sample_id, 
-                -polygon_source,  
-                -biowide_region, 
-                -dereks_stratification,
+                -polygon_source,
                 -cell)
 test_data <- pixel_valid_biowide %>% 
   ungroup() %>%
   dplyr::select(-sample_id, 
-                -polygon_source,  
-                -biowide_region, 
-                -dereks_stratification,
+                -polygon_source,
                 -cell)
 
 # Helper function for sub-sample training and validation data to a total target
-get_sub_train <- function(n_target){
-  sample_n(train_data, round(n_target * 0.8))
+get_sub_train <- function(n_target, strat_col){
+  strat_col <- c(strat_col, "forest_value")
+  frac <- 0.8 * 2 * n_target / nrow(train_data)
+  train_data %>%
+    group_by(across(all_of(!!strat_col))) %>% 
+  sample_frac(frac) %>%
+    ungroup() %>%
+    select(-biowide_region, 
+           -dereks_stratification)
 }
-get_sub_test <- function(n_target){
-  sample_n(test_data, round(n_target * 0.2))
+get_sub_test <- function(n_target, strat_col){
+  strat_col <- c(strat_col, "forest_value")
+  frac <- 0.2 * 2 * n_target / nrow(test_data) 
+  test_data %>%
+    group_by(across(all_of(!!strat_col))) %>% 
+    sample_frac(frac) %>%
+    ungroup() %>%
+    select(-biowide_region, 
+           -dereks_stratification)
 }
 # Quick test
-nrow(get_sub_train(100000))
-nrow(get_sub_test(100000))
+nrow(get_sub_train(30000, "biowide_region"))
+nrow(get_sub_test(30000, "biowide_region"))
+
+# get_sub_train(30000, "biowide_region") %>% group_by(biowide_region) %>% tally() %>% 
+#   mutate(frac = n / group_by(train_data, biowide_region) %>% tally() %>% pull(n),
+#          target_frac = 0.8 * 30000 / nrow(train_data))
+# get_sub_test(30000, "biowide_region") %>% group_by(biowide_region) %>% tally() %>% 
+#   mutate(frac = n / group_by(test_data, biowide_region) %>% tally() %>% pull(n),
+#          target_frac = 0.2 * 30000 / nrow(test_data))
+
+get_sub_train(10000, "biowide_region") %>% group_by(forest_value) %>% tally()
+get_sub_test(10000, "biowide_region") %>% group_by(forest_value) %>% tally()
 
 # Set target sampling sizes to test
-n_samples <- c(10000, 20000, 30000, 40000, 50000, 75000, 100000, 125000)
+n_samples <- c(10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000)
 
 # Ranger training function 
 train_ranger <- function(n){
@@ -127,11 +147,22 @@ vis_results <- function(results_df, model_name){
       annotate("text", x = 0, y = Inf, vjust = 1.5, hjust = 0,
                label = model_name, size = 14 / .pt) +
       scale_x_continuous(limits = c(0, 125000)) +
-      scale_y_continuous(limits = c(0, 1500)) +
+      scale_y_continuous(limits = c(0, 2500)) +
       labs(x = "Sample size", y = "Training time (s)") +
       theme_cowplot()
   )
 }
+
+# Set up cluster
+cl <- makeCluster(8)
+clusterEvalQ(cl, library(ranger))
+clusterEvalQ(cl, library(dplyr))
+clusterEvalQ(cl, library(caret))
+clusterEvalQ(cl, library(ranger))
+clusterEvalQ(cl, library(gbm))
+clusterExport(cl, varlist = list("train_data", "test_data", 
+                                 "get_sub_train", "get_sub_test",
+                                 "train_ranger", "train_gbm"))
 
 ## 1) Ranger Biowide
 
@@ -139,9 +170,11 @@ vis_results <- function(results_df, model_name){
 hyper_params <- data.frame(mtry =5,
                            min.node.size =1,
                            splitrule	= "gini")
+clusterEvalQ(cl, rm(hyper_params))
+clusterExport(cl, "hyper_params")
 
 # Map over sampling intervals
-sens_ranger_biowide <- pblapply(n_samples, train_ranger)
+sens_ranger_biowide <- pblapply(n_samples, train_ranger, cl = cl)
 
 # Generate summary data frame
 results_ranger_biowide <- data.frame(
@@ -160,9 +193,11 @@ hyper_params <- data.frame(n.trees = 5400,
                            shrinkage = 0.1,
                            n.minobsinnode = 3,
                            interaction.depth = 8)
+clusterEvalQ(cl, rm(hyper_params))
+clusterExport(cl, "hyper_params")
 
 # Map over sampling intervals
-sens_gbm_biowide <- pblapply(n_samples, train_gbm)
+sens_gbm_biowide <- pblapply(n_samples, train_gbm, cl = cl)
 
 # Generate summary data frame
 results_gbm_biowide <- data.frame(
@@ -190,7 +225,8 @@ test_data <- pixel_valid_derek %>%
                 -biowide_region, 
                 -dereks_stratification,
                 -cell)
-
+clusterEvalQ(cl, rm(list = c("train_data", "test_data")))
+clusterExport(cl, list("train_data", "test_data"))
 
 ## 4) Ranger Sustainscapes
 
@@ -198,9 +234,11 @@ test_data <- pixel_valid_derek %>%
 hyper_params <- data.frame(mtry =5,
                            min.node.size =1,
                            splitrule	= "gini")
+clusterEvalQ(cl, rm(hyper_params))
+clusterExport(cl, "hyper_params")
 
 # Map over sampling intervals
-sens_ranger_derek <- pblapply(n_samples, train_ranger)
+sens_ranger_derek <- pblapply(n_samples, train_ranger, cl = cl)
 
 # Generate summary data frame
 results_ranger_derek <- data.frame(
@@ -219,9 +257,11 @@ hyper_params <- data.frame(n.trees = 5700,
                            shrinkage = 0.1,
                            n.minobsinnode = 3,
                            interaction.depth = 8)
+clusterEvalQ(cl, rm(hyper_params))
+clusterExport(cl, "hyper_params")
 
 # Map over sampling intervals
-sens_gbm_derek <- pblapply(n_samples, train_gbm)
+sens_gbm_derek <- pblapply(n_samples, train_gbm, cl = cl)
 
 # Generate summary data frame
 results_gbm_derek <- data.frame(
@@ -232,6 +272,8 @@ results_gbm_derek <- data.frame(
 
 plot_gbm_derek <- vis_results(results_gbm_derek,
                                 "gbm SustainScapes")
+
+stopCluster(cl)
 
 ## 6) Generate summary plots
 (ranger_sensitivity <- plot_grid(plot_ranger_biowide,
@@ -381,10 +423,30 @@ dist_true_training_high <- pblapply(pixel_training_data_high$sample_id,
                                sf_obj = pixel_training_data_high, 
                                cl = cl) %>% 
   unlist()
-pixel_training_data_low <- pblapply(pixel_training_data_low$sample_id,
+dist_true_training_low  <- pblapply(pixel_training_data_low$sample_id,
                                     dist_nearest_neighbour,
                                     buffer = 10000, 
                                     sf_obj = pixel_training_data_low, 
                                     cl = cl) %>% 
   unlist()
+stopCluster(cl)
+summary_stats_high <- data.frame(data_set = "pixel_training_data_high",
+                                 mean_dist_nn = mean(dist_true_training_high, na.rm = T),
+                                 median_dist_nn = median(dist_true_training_high, na.rm = T),
+                                 min_dist_nn = min(dist_true_training_high, na.rm = T),
+                                 max_dist_nn = max(dist_true_training_high, na.rm = T),
+                                 n_na = sum(is.na(dist_true_training_high)))
+                                 
+summary_stats_low <- data.frame(data_set = "pixel_training_data_low",
+                                 mean_dist_nn = mean(dist_true_training_low , na.rm = T),
+                                 median_dist_nn = median(dist_true_training_low , na.rm = T),
+                                 min_dist_nn = min(dist_true_training_low , na.rm = T),
+                                 max_dist_nn = max(dist_true_training_low , na.rm = T),
+                                 n_na = sum(is.na(dist_true_training_low )))
 
+# > summary_stats_high
+# data_set mean_dist_nn median_dist_nn min_dist_nn max_dist_nn n_na
+# 1 pixel_training_data_high     94.59265       53.85165           0    8171.377    6
+# > summary_stats_low
+# data_set mean_dist_nn median_dist_nn min_dist_nn max_dist_nn n_na
+# 1 pixel_training_data_low     77.43345       44.72136           0    9695.282    2
