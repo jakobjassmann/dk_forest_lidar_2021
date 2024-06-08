@@ -524,7 +524,7 @@ combined_sample_coords <- combined_sample_coords %>%
 ## EcoDes-DK15 v1.1.0 descriptors
 
 # Load list of Ecodes-DK variables
-ecodes_vrt <- shell("dir /b /s F:\\JakobAssmann\\EcoDes-DK_v1.1.0\\*.vrt",
+ecodes_vrt <- shell("dir /b /s F:\\JakobAssmann\\EcoDes-DK15_v1.1.0\\*.vrt",
                     intern = T) %>%
   gsub("\\\\", "/", .)
 
@@ -656,16 +656,16 @@ pixel_training_data_raw$ns_groundwater_summer_utm32_10m <- terra::extract(ns_gro
 # Remove raster
 rm(ns_groundwater_summer_utm32_10m)
 
-## Terrons (Peng 2020)
-
-# Load raster
-terron_point <- rast("data/predictor_data/terron_maps/terron_point.tif")
-
-# Extract values
-pixel_training_data_raw$terron_point <- terra::extract(terron_point, combined_sample_coords)[,2]
-
-# Remove raster
-rm(terron_point)
+# ## Terrons (Peng 2020)
+# 
+# # Load raster
+# terron_point <- rast("data/predictor_data/terron_maps/terron_point.tif")
+# 
+# # Extract values
+# pixel_training_data_raw$terron_point <- terra::extract(terron_point, combined_sample_coords)[,2]
+# 
+# # Remove raster
+# rm(terron_point)
 
 ## Soil variables from Derek / SustainScapes 
 

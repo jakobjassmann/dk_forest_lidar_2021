@@ -17,14 +17,15 @@ pixel_training_data <- pixel_training_data %>%
   select(-contains("250")) %>%
   select(-contains("mean_110")) %>%
   select(-contains("proportion")) %>%
-  select(-heat_load_index,
-         -aspect,
-         -openness_mean,
-         -normalized_z_mean,
-         -canopy_openness,
+  select(#-heat_load_index,
+         #-aspect,
+         #-openness_mean,
+         #-normalized_z_mean,
+         #-canopy_openness,
          -treetype_bjer_con,
-         -twi,
-         -terron_point) %>% 
+         #-twi,
+         #-terron_point
+         ) %>% 
   mutate(forest_value = factor(forest_value)) %>%
   na.omit()
 
