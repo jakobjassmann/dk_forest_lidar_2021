@@ -122,12 +122,12 @@ biowide_regions$region <- factor(
 # Generate labels
 biowide_regions <- mutate(
   biowide_regions,
-  label = paste0("<span style='font-size:16pt'>",
+  label = paste0("<span style='font-size:20pt'>",
                  #"**", 
                  region, 
                  #"**",
                  "</span>",
-                 "<span style='font-size:10pt; color:black'>",
+                 "<span style='font-size:14pt; color:black'>",
                  "<br>Accuracy: ", formatC(accuracy, digits = 2, format = "f"),
                  "<br>Sensitivity: ", formatC(sens, digits = 2, format = "f"),
                  "<br>User Accuracy: ", formatC(useracc, digits = 2, format = "f"),
