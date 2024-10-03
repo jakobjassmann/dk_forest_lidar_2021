@@ -8,6 +8,7 @@ library(sf)
 library(ggplot2)
 library(cowplot)
 library(ggtext)
+library(rnaturalearth)
 
 # Load shape files 
 biowide_regions <- read_sf("data/stratification/biowide_georegions/biowide_zones.shp")
@@ -40,16 +41,16 @@ biowide_regions <-
          x = x_cen + map_span_x * c(-0.3,  # Nordjlland
                                     -0.35,  # Vestjylland
                                     0.5,  # Oestjylland
-                                    0.20,  # Sjaelland
-                                    -0.00,  # Bornholm
+                                    0.15,  # Sjaelland
+                                    -0.05,  # Bornholm
                                     -0.0), # Fune_Lolland
          
-         y = y_cen + map_span_y * c( 0.10,  # Nordjlland
+         y = y_cen + map_span_y * c( 0.05,  # Nordjlland
                                      0.10,  # Vestjylland
                                      0.30,  # Oestjylland
-                                     0.10,  # Sjaelland
+                                     0.05,  # Sjaelland
                                      -0.10,  # Bornholm
-                                     -0.20), # Fune_Lolland
+                                     -0.15), # Fune_Lolland
          hjust = c(0.5, # Nordjlland
                    0.5, # Vestjylland
                    0.5, # Oestjylland
@@ -78,7 +79,7 @@ main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
             data = biowide_regions) +
     geom_richtext(aes(x = x, 
                       y = y, 
-                      label = paste0("<span style = font-size:16pt>", region, "</span>"),
+                      label = paste0("<span style = font-size:20pt>", region, "</span>"),
                       colour = region,
                       hjust = hjust,
                       vjust = vjust), 
@@ -111,5 +112,45 @@ main_panel_height <- main_panel_ylim[2] - main_panel_ylim[1]
 save_plot("docs/figures/map_for_figure_1.png",
           map_plot,
           base_asp = main_panel_width / main_panel_height,
+          bg = "white")
+
+
+# Make overview map to show extent in the global context. 
+
+# Get rnatural earth shapes
+coast_lines <- ne_countries(scale = "medium") %>%
+  st_union()
+denmark <- ne_countries(scale = "medium", country = "Denmark")
+
+# Determine map boundaries in Europe Lambert EPSG:3035
+europe_lims <- data.frame(
+  x = c(-10,40),
+  y = c(30,65)) %>%
+  st_as_sf(coords = c("x", "y"), crs = 4326) %>%
+  st_transform(3035) %>%
+  st_bbox()
+
+(overview_map <- ggplot() +
+  geom_sf(data = coast_lines, 
+          color = "grey40",
+          fill = "grey70") +
+  geom_sf(data = denmark, fill = "#7D3E8C") +
+  geom_sf(data = denmark %>%
+            st_transform(3035) %>%
+            st_buffer(100 * 10^3) %>%
+            st_bbox() %>%
+            st_as_sfc(),  
+          col = "black",
+          linewidth = 4,
+          lineend = "round",
+          fill = "NA") +
+  coord_sf(xlim = europe_lims[c(1,3)], 
+           ylim = europe_lims[c(2,4)],
+           crs = 3035) +
+  theme_void())
+
+save_plot("docs/figures/overview_map_figure_1.png",
+          overview_map,
+          base_asp = (europe_lims[3]-europe_lims[1]) / (europe_lims[4]-europe_lims[2]),
           bg = "white")
 
