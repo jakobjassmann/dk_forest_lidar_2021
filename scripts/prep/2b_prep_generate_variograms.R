@@ -20,7 +20,7 @@ rasterOptions(progress = "text")
 terraOptions(progress=1)
 
 # Set raster file names
-raster_files <- shell("dir /b /s F:\\JakobAssmann\\EcoDes-DK_v1.1.0\\*.vrt",
+raster_files <- shell("dir /b /s F:\\JakobAssmann\\EcoDes-DK15_v1.1.0\\*.vrt",
                       intern = T) %>%
   gsub("\\\\", "/", .)
 
@@ -33,28 +33,14 @@ raster_files <- raster_files[!grepl("building",raster_files)]
 # Add non-EcoDes variables
 raster_files <- c(
   raster_files,
-  "data/predictor_data/conif_vs_broadleaf/forest_type_cloud.tif",
-  "data/predictor_data/conif_vs_broadleaf/forest_type_con.tif",
-  "data/predictor_data/conif_vs_broadleaf/forest_type_dec.tif",
-  "data/predictor_data/plant_available_water/paw_160cm.tif",
-  "data/predictor_data/focal_variables/a_ptv_focal_3x3.tif",
-  "data/predictor_data/focal_variables/canopy_height_focal_3x3.tif",
-  "data/predictor_data/focal_variables/normalized_z_sd_focal_3x3.tif",
-  "data/predictor_data/terraennaert_grundvand_10m/summer_predict.tif",
-  "data/predictor_data/terron_maps/terron_point.tif")
+  "data/predictor_data/terraennaert_grundvand_10m/ns_groundwater_summer_utm32_10m.tif",
+  "data/predictor_data/soil_layers/Clay_utm32_10m.tif",
+  "data/predictor_data/soil_layers/Sand_utm32_10m.tif",
+  "data/predictor_data/soil_layers/Soc_utm32_10m.tif",
+  "data/predictor_data/foliage_height_diversity/foliage_height_diversity.tif")
 
 # Remove superfluous variables
-raster_files <- c("mask",
-                  "forest_type_cloud",
-                  "forest_type_con",
-                  "heat_load_index",
-                  "aspect",
-                  "openness_mean",
-                  "normalized_z_mean",
-                  "twi", 
-                  "proportion", 
-                  "paw",
-                  "a_ptv") %>% 
+raster_files <- c("mask") %>% 
   paste0("(.*", ., ".*)", collapse = "|") %>%
   grepl(., raster_files) %>%
   `!` %>%
@@ -66,13 +52,13 @@ sample_variograms <- function(predictor_raster_file) {
   # Load raster
   predictor_raster <- raster(predictor_raster_file)
   
-  # Check whether raster is part of the EcoDes-DK dataset
-  # If so apply conversion factor
-  if(grepl("EcoDes", predictor_raster_file)){
-    conversion_factors <- read.csv("F:/JakobAssmann/EcoDes-DK_v1.1.0/conversion_factors.csv")
-    conversion_factor <- conversion_factors$conv_fac[sapply(conversion_factors[,1], grepl, x = predictor_raster_file)]
-    predictor_raster <- predictor_raster / conversion_factor
-  }
+  # # Check whether raster is part of the EcoDes-DK dataset
+  # # If so apply conversion factor
+  # if(grepl("EcoDes", predictor_raster_file)){
+  #   conversion_factors <- read.csv("F:/JakobAssmann/EcoDes-DK15_v1.1.0/conversion_factors.csv")
+  #   conversion_factor <- conversion_factors$conv_fac[sapply(conversion_factors[,1], grepl, x = predictor_raster_file)]
+  #   predictor_raster <- predictor_raster / conversion_factor
+  # }
   
   # Convert raster to spdf
   predictor_spdf <- as(predictor_raster, "SpatialPixelsDataFrame" ) 
@@ -114,7 +100,7 @@ sample_variograms <- function(predictor_raster_file) {
 
 
 # Prep parallel environment
-cl <- makeCluster(15)
+cl <- makeCluster(14)
 clusterEvalQ(cl, {
   library(gstat)
   library(raster)
@@ -156,7 +142,8 @@ plot_variogram <- function(vario, raster_name){
             ncol = 2)
   save_plot(paste0("docs/variograms/", raster_name, ".png"),
             vario_plots,
-            ncol = 2)
+            ncol = 2,
+            bg = "white")
   return("OK")
 }
 

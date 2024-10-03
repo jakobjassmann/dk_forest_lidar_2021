@@ -3,6 +3,7 @@
 
 # Dependencies
 library(tidyverse)
+library(tidyterra)
 library(ggplot2)
 library(terra)
 library(sf)
@@ -18,18 +19,41 @@ low_quality_col <- "#D67D49"
 # Generate map of high quality forests (panel A)
 
 # Forest projections
-forest_quality <- rast("data/projections/ranger_biowide/forest_quality_ranger_biowide.vrt")
+forest_quality <- suppressWarnings(rast("data/projections/ranger_biowide/forest_quality_ranger_biowide.vrt"))
+#forest_quality <- suppressWarnings(rast("data/projections/ranger_biowide/forest_quality_ranger_biowide_100m_downsampled.tif"))
+
 # DK boundaries
 denmark <- read_sf("data/stratification/biowide_georegions/DK/DK.shp") %>%
   st_transform(crs(forest_quality))
 
-main_panel <- gplot(forest_quality, maxpixels = 500000) +
+# neighbouring countries
+neighbours <- ne_countries(scale = 10,
+                           country = c("Norway", "Sweden", "Germany"),
+                           returnclass = "sf") %>%
+  st_transform(crs(forest_quality))
+
+# Load biowide regions 
+biowide_regions <- read_sf("data/stratification/biowide_georegions/biowide_zones.shp")%>%
+  st_transform(crs(forest_quality))
+
+main_panel <- ggplot() + #gplot(forest_quality, maxpixels = 2500) +# 500000) +
+  geom_sf(data = neighbours,
+          inherit.aes = F, 
+          fill = "#FFFFFF", 
+          colour = "#919191",
+          linewidth = 0.5) +
   geom_sf(data = denmark, 
           inherit.aes = F, 
-          fill = "#FAFAFA", 
+          fill = "#FFFFFF", 
           colour = "#919191",
-          size = 0.5) +
-  geom_tile(aes(fill = value)) +
+          linewidth = 0.5) +
+  geom_sf(data = biowide_regions, 
+          inherit.aes = F, 
+          fill = "#FFFFFF", 
+          colour = "#919191",
+          linewidth = 0.5) +
+  geom_spatraster(data = forest_quality) +
+  # geom_tile(aes(fill = value)) +
   scale_fill_gradient(low = high_quality_col, high = low_quality_col,
                       na.value = NA)+
   annotate("text", 
@@ -76,27 +100,55 @@ main_panel <- gplot(forest_quality, maxpixels = 500000) +
            fill = low_quality_col) +
   annotate("rect",
            xmin = ext(forest_quality)[1] + 
-             0.675 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.8 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            xmax = 100000 + ext(forest_quality)[1] + 
-             0.675 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.8 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            ymin = st_bbox(denmark)["ymin"] + 20000,
            ymax = st_bbox(denmark)["ymin"] + 20000 + 5000,
            fill = "black") +
   annotate("text", 
            x = 50000 + ext(forest_quality)[1] + 
-             0.675 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
+             0.8 * (ext(forest_quality)[2] - ext(forest_quality)[1]),
            y = st_bbox(denmark)["ymin"] + 20000 + 15000,
            label = "100 km", 
            colour = "black",
            size = 14 * 0.35,
            hjust = 0.5,
            vjust = 0.5) +
+  annotate("rect", 
+           fill = "white",
+           colour = "NA",
+           xmin = ext(forest_quality)[1] - 10^6,
+           xmax = ext(forest_quality)[2] + 10^6,
+           ymin = ext(forest_quality)[4] + 2 * 10^4,
+           ymax = ext(forest_quality)[4] + 10^6) +
+  annotate("rect", 
+           fill = "white",
+           colour = "NA",
+           xmin = ext(forest_quality)[2] + 4* 10^4,
+           xmax = ext(forest_quality)[2] + 10^6,
+           ymin = ext(forest_quality)[3] - 10^6,
+           ymax = ext(forest_quality)[4] + 10^6) +
   labs(title = "Potential high conservation value forest: 1999.61 km2") +
   theme_map() +
+  coord_sf(xlim = c(ext(forest_quality)[1], ext(forest_quality)[2]),
+           ylim = c(ext(forest_quality)[3], ext(forest_quality)[4]),
+           clip = "off") +
   theme(legend.position = "none",
-        plot.margin = unit(c(0.1,0,0,0), "in"),
+        plot.margin = unit(c(0.1,0,0,0), "in")
         #panel.border = element_rect(colour = "red", fill = NA)
         )
+
+# plot_grid(main_panel,
+#           plot_grid(frederiksdal_grob,
+#                     frederiksdal_qual_grob,
+#                     nrow = 2),
+#           ncol = 2,
+#           rel_widths = c(2,1)) %>%
+#   save_plot("docs/figures/figure_3.png", .,
+#             base_height = 6,
+#             base_asp = (772 + 0.5 * 772) / 603,
+#             bg = "#F3F3F3")
 
 ## Zoom-in panels
 
@@ -249,7 +301,7 @@ plot_ortho_n_qual <- function(ortho, ortho_name, qual = F){
                   ymin = 0.5 - (0.5 * (603) / (772)), 
                   ymax = 0.5 + (0.5 * (603) / (772))), 
               colour = "black",
-              size = 0.5,
+              linewidth = 0.5,
               fill = NA) +
     # labs(subtitle = ortho_name) +
     theme_map()  +
@@ -283,4 +335,4 @@ plot_grid(main_panel,
   save_plot("docs/figures/figure_3.png", .,
             base_height = 6,
             base_asp = (772 + 0.5 * 772) / 603,
-            bg = "white")
+            bg = "#F3F3F3")
