@@ -76,19 +76,19 @@ biowide_regions <- mutate(
 
 biowide_regions <- 
   mutate(biowide_regions,
-         x = x_cen + map_span_x * c(-0.25,  # Nordjlland
-                                    -0.15,  # Vestjylland
-                                    0.30,  # Oestjylland
-                                    0.25,  # Sjaelland
-                                    -0.10,  # Bornholm
-                                    -0.30), # Fune_Lolland
+         x = x_cen + map_span_x * c(-0.22,  # Nordjlland
+                                    -0.12,  # Vestjylland
+                                    0.275,  # Oestjylland
+                                    0.20,  # Sjaelland
+                                    -0.15,  # Bornholm
+                                    -0.40), # Fune_Lolland
          
-         y = y_cen + map_span_y * c( -0.10,  # Nordjlland
+         y = y_cen + map_span_y * c( -0.075,  # Nordjlland
                                      0.10,  # Vestjylland
-                                     0.30,  # Oestjylland
-                                     0.05,  # Sjaelland
-                                     -0.10,  # Bornholm
-                                     -0.20), # Fune_Lolland
+                                     0.275,  # Oestjylland
+                                     0.025,  # Sjaelland
+                                     -0.05,  # Bornholm
+                                     -0.175), # Fune_Lolland
          hjust = c(1, # Nordjlland
                    1, # Vestjylland
                    0, # Oestjylland
@@ -122,15 +122,15 @@ biowide_regions$region <- factor(
 # Generate labels
 biowide_regions <- mutate(
   biowide_regions,
-  label = paste0("<span style='font-size:20pt'>",
-                 #"**", 
+  label = paste0("<span style='font-size:18pt'>",
+                 "**", 
                  region, 
-                 #"**",
+                 "**",
                  "</span>",
-                 "<span style='font-size:14pt; color:black'>",
+                 "<span style='font-size:16pt; color:black'>",
                  "<br>Accuracy: ", formatC(accuracy, digits = 2, format = "f"),
                  "<br>Sensitivity: ", formatC(sens, digits = 2, format = "f"),
-                 "<br>User Accuracy: ", formatC(useracc, digits = 2, format = "f"),
+                 "<br>User Acc: ", formatC(useracc, digits = 2, format = "f"),
                  "</span>"))
 
 # Build forest type panels
@@ -173,7 +173,7 @@ plot_ortho <- function(ortho, ortho_name, frame_colour = "black",
        ortho_name,
        adj = 0,
        col = "white",
-       cex = 10)
+       cex = 12)
   rect(ext(ortho)[1] + width * 0.9 - 50,
        ext(ortho)[3] + height * 0.1,
        ext(ortho)[1] + width * 0.9,
@@ -184,7 +184,7 @@ plot_ortho <- function(ortho, ortho_name, frame_colour = "black",
        ext(ortho)[3] + height * 0.21,
        scale_caption,
        col = "white",
-       cex = 10)
+       cex = 12)
   dev.off()
   gg_grob <- ggplot() +
     draw_image(temp_file) +
@@ -192,11 +192,11 @@ plot_ortho <- function(ortho, ortho_name, frame_colour = "black",
              ymin = 0.5 - (0.5 * (500) / (640)), 
              ymax = 0.5 + (0.5 * (500) / (640))), 
              colour = frame_colour,
-             size = 1.5,
+             linewidth = 1.5,
              fill = NA) +
      # labs(subtitle = ortho_name) +
     coord_equal() +
-    theme_map() +
+    theme_map(20) +
     theme(plot.margin=unit(c(0,0,0,0),"mm"),
           #panel.border = element_rect(colour = "red", fill = NA)
           )
@@ -222,7 +222,7 @@ main_panel <-
   ggplot() + 
   geom_sf(#aes(colour = region,
           #    fill = region), 
-          size = 0.5,
+          linewidth = 0.4,
           fill = NA,
           data = biowide_regions) +
   geom_richtext(aes(x = x, 
@@ -234,7 +234,7 @@ main_panel <-
                 data = biowide_regions,
                 fill = NA,
                 label.color = NA) +
-  geom_sf(data = pixel_training_data, # %>% sample_n(20), 
+  geom_sf(data = pixel_training_data, # %>% sample_n(20),
           mapping = aes(colour = forest_value),
           size = 0.001) +
   scale_colour_manual(values = c(high_quality_col,
@@ -244,25 +244,35 @@ main_panel <-
            xlim = main_panel_xlim,
            ylim = main_panel_ylim) +
   labs(title = "Overall Performance - Best Model: Random Forest",
-       subtitle = paste0(
-         "Accuracy: ", round(performance_overall$overall["Accuracy"], 2), 
-         "\nSensitivity: ", round(performance_overall$byClass["Sensitivity"], 2),
-         "\nUser Accuracy: ", round(performance_overall$byClass["Pos Pred Value"], 2))) +
+       subtitle = " \n ") + 
+  annotate("richtext", 
+           x = main_panel_xlim[1] + main_panel_width* -0.065,
+           y = 20000 +main_panel_ylim[1] +
+             1.09 * main_panel_height,
+           hjust = 0,
+           label = paste0("<span style='font-size:16pt'>",
+                          "Accuracy: ", formatC(round(performance_overall$overall["Accuracy"], 2), digits = 2, format = "f"),
+                  "<br>Sensitivity: ", formatC(round(performance_overall$byClass["Sensitivity"], 2), digits = 2, format = "f"),
+                  "<br>User Accuracy: ", formatC(round(performance_overall$byClass["Pos Pred Value"], 2), digits = 2, format = "f"),
+                  "</span>"),
+           fill = NA, 
+           label.color =NA
+           ) +
   annotate("text", 
            x = main_panel_xlim[1] + 
-             0.63 * main_panel_width,
+             0.56 * main_panel_width,
            y = 11000 + main_panel_ylim[1] +
              1.15 * main_panel_height,
            label = "Training: High Value Pixels", 
            colour = "black",
-           size = 14 * 0.35,
+           size = 18 * 0.35,
            hjust = 0,
            vjust = 0.5) +
   annotate("rect", 
            xmin = main_panel_xlim[1] + 
-             0.59 * main_panel_width,
+             0.51 * main_panel_width,
            xmax = 20000 + main_panel_xlim[1] + 
-             0.59 * main_panel_width,
+             0.51 * main_panel_width,
            ymin = main_panel_ylim[1] +
              1.15 * main_panel_height,
            ymax = 20000 + main_panel_ylim[1] +
@@ -271,47 +281,47 @@ main_panel <-
            fill = high_quality_col) +
   annotate("text", 
            x = main_panel_xlim[1] + 
-             0.63 * main_panel_width,
+             0.56 * main_panel_width,
            y = 11000 + main_panel_ylim[1] +
-             1.09 * main_panel_height,
+             1.08 * main_panel_height,
            label = "Training: Low Value Pixels", 
            colour = "black",
-           size = 14 * 0.35,
+           size = 18 * 0.35,
            hjust = 0,
            vjust = 0.5) +
   annotate("rect", 
            xmin = main_panel_xlim[1] + 
-             0.59 * main_panel_width,
+             0.51 * main_panel_width,
            xmax = 20000 + main_panel_xlim[1] + 
-             0.59 * main_panel_width,
+             0.51 * main_panel_width,
            ymin = main_panel_ylim[1] +
-             1.09 * main_panel_height,
+             1.08 * main_panel_height,
            ymax = 20000 +main_panel_ylim[1] +
-             1.09 * main_panel_height,
+             1.08 * main_panel_height,
            color = "black",
            fill = low_quality_col) +
   annotate("rect",
-           xmin =main_panel_xlim[1] + 
-             0.01 * main_panel_width,
-           xmax = 100000 + main_panel_xlim[1] + 
-             0.01 * main_panel_width,
-           ymin = main_panel_ylim[1] + 5000,
-           ymax = main_panel_ylim[1] + 5000 + 5000,
+           xmin =main_panel_xlim[1] - 
+             0.015 * main_panel_width,
+           xmax = 100000 + main_panel_xlim[1] - 
+             0.015 * main_panel_width,
+           ymin = main_panel_ylim[1] -5000,
+           ymax = main_panel_ylim[1] -5000 + 5000,
            fill = "black") +
   annotate("text", 
-           x = 50000 + main_panel_xlim[1] + 
-             0.01 * main_panel_width,
-           y = main_panel_ylim[1] + 5000 + 25000,
+           x = 50000 + main_panel_xlim[1] - 
+             0.015 * main_panel_width,
+           y = main_panel_ylim[1] - 5000 + 25000,
            label = "100 km", 
            colour = "black",
-           size = 14 * 0.35,
+           size = 18 * 0.35,
            hjust = 0.5,
            vjust = 0.5) +
-  theme_map() +
+  theme_map(16) +
   theme(legend.position = "none",
         plot.margin = margin(0.25,0,0.25,0.25, unit = "in"),
-        #panel.border = element_rect(colour = "red", fill = NA)
-        )
+        plot.title = element_text(size = 20, hjust = -2, vjust = 3),
+        plot.subtitle = element_text(size = 14, hjust = 0))
 
 plot_grid(main_panel,
           plot_grid(p25_grob,
