@@ -1,13 +1,11 @@
 # Assmann et al. (in prep) Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion
-Code repository <br>
+Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand <br>
+
+**Code repository accomanying Assmann et al. (in prep)**<br>
 Last update: 16 October 2024.<br>
 
 
 **Summary reports, data visualisations and downlads can be found on:**<br> https://jakobjassmann.github.io/dk_forest_lidar_2021/
-
-
-
-Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand 
 
 ## Content
 
@@ -52,9 +50,9 @@ scripts/                                - Scripts for data prep, model fitting, 
 
 ## 2. Required source data
 
-The datasets listed below are required to regenerate the full analysis and carry out the forest quality projections across Denmark.
+The datasets listed below are required to regenerate the full analysis and carry out the projections of forest conservation value across Denmark.
 
-*Note: The annotation polygons (high / low quality forests) and the extracted predictor values for the random sample of pixel locations within these polygons are included as compressed R data files in this repository. These files are located in `/data/training_data` and allow for the replication of the model fitting and accuracy assessments without the need to aquire the data listed below.* 
+*Note: The annotation polygons (high / low conservation value forests) and the extracted predictor values for the random sample of pixel locations within these polygons are included as compressed R data files in this repository. These files are located in `/data/training_data` and allow for the replication of the model fitting and accuracy assessments without the need to aquire the data listed below.* 
 
 **Forest annotations**
 - p15 and p225 polygons: https://arealinformation.miljoeportal.dk/
@@ -74,7 +72,7 @@ The datasets listed below are required to regenerate the full analysis and carry
 
 ## 3. Analysis workflow
 
-A conceptual overview of the workflow can be found [here](https://jakobjassmann.github.io/dk_forest_lidar_2021/workflow.html).<br><br>
+A conceptual overview of the workflow can be found in the manuscript and [here](https://jakobjassmann.github.io/dk_forest_lidar_2021/workflow.html).<br><br>
 The following steps describe the scripts contained in this repository and the order in which they need to be run.
 
 *Note: All random numbers are generated as pseudo-random numbers using a seed to ensure reproducibility of the analysis.*
@@ -87,12 +85,12 @@ All scripts are found in `scripts/prep`.
 
 1. Data wrangling (Stage I): Run scripts `1a_*.R - 1d_*.R` to prepare: the forest mask (1a), the BIOWIDE stratification (1b), the foliage height diversity predictor (1c) and the tree type predictor (1d).
 2. Data wrangling (Stage II): Run scripts `2a_*.R - 2c_*.R` to: reproject the predictors (2a), generate the variograms (2b - optional!), generate the focal predictors (2c). 
-3. Pixel training data prep: Run scripts `3a_*.R and 3b_*.R `to: generate the pixel training sample (3a) and split the training sample into a 80/20 split using the geographic stratification (3b). 
+3. Pixel training data prep: Run scripts `3a_*.R and 3c_*.R `to: generate the pixel training sample (3a), split the training sample into a 80/20 split using the geographic stratification (3b), optional: carry out the sensitivity analysis of the training approach to sample size (3c). 
 4. Data wrangling (Stage III): Run scripts `4a_*.R and 4b_*.R` to: prepare the forest polygons for the leaflet we app (4a) and the forest change masks for the projections and web app (4b). 
 
 **Model fitting**
 
-The forest quality models are fitted and fine tuned using the scripts contained in `scripts/models`. The fitted models are saved in `data/models`. <br><br> All models presented in the final publication are contained as compressed R data files in this repository.
+The forest conservation value models are fitted and fine tuned using the scripts contained in `scripts/models`. The fitted models are saved in `data/models`. <br><br> All models presented in the final publication are contained as compressed R data files in this repository.
 
 - Fit gradient boosting models (scripts: `/scripts/models/pixel_gbm_\*.R".
 - Fit random forest models (scripts: `/scripts/models/pixel_ranger_\*.R".
@@ -117,7 +115,7 @@ We would like to acknowledge our funders. We woul also like to thank Thomas Nord
 
 ## 5. Citation
 
-Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Signe Normand. (in prep). "Airborne laser scanning data fusion and machine learning identify forests of high conservation value in Denmark". https://github.com/jakobjassmann/dk_forest_lidar_2021
+Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand. (in prep). "Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion". https://github.com/jakobjassmann/dk_forest_lidar_2021
 
 [\[back to content\]](#content)
 
