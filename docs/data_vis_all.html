@@ -523,12 +523,12 @@
         var legend = L.control({ position: "bottomright" });
         legend.onAdd = function(map) {
             var div = L.DomUtil.create("div", "legend");
-            div.innerHTML += "<h4>Projected Forest Quality</h4>";
-            div.innerHTML += '<i style="background: DarkGreen"></i><span>High Quality</span><br>';
-            div.innerHTML += '<i style="background: DarkGoldenRod"></i><span>Low Quality</span><br>'
+            div.innerHTML += "<h4>Projected Forest Conservation Value</h4>";
+            div.innerHTML += '<i style="background: DarkGreen"></i><span>High Conservation Value</span><br>';
+            div.innerHTML += '<i style="background: DarkGoldenRod"></i><span>Low Conservation Value</span><br>'
             div.innerHTML += "<h4>Training Polygons</h4>";
-            div.innerHTML += '<i style="background: DarkSlateGray"></i><span>High Quality</span><br>';
-            div.innerHTML += '<i style="background: SaddleBrown"></i><span>Low Quality</span><br>';
+            div.innerHTML += '<i style="background: DarkSlateGray"></i><span>High Conservation Value</span><br>';
+            div.innerHTML += '<i style="background: SaddleBrown"></i><span>Low Conservation Value</span><br>';
             div.innerHTML += "<h4>Disturbance</h4>";
             div.innerHTML += '<i style="background: Purple"></i><span>Disturbed since 2015</span><br>';
         return div;
@@ -542,7 +542,7 @@
         var title = L.control({ position: "bottomleft" });
         title.onAdd = function(map) {
                 var div = L.DomUtil.create("div", "legend");
-                div.innerHTML += "<h4>Denmark Forest Quality v1.0.0 - All Models</h4>";
+                div.innerHTML += "<h4>Denmark Forest Conservation Value v1.0.0 - All Models</h4>";
                 div.innerHTML += '<span style="margin: 0 0 0 14px;">Assmann et al. (in prep).<br></span>';
                 div.innerHTML += '<span style="margin: 0 0 0 14px;">Contact: <a href="mailto:j.assmann@bio.au.dk">j.assmann@bio.au.dk</a><br></span>';
                 div.innerHTML += "<span style='margin: 0 14px 0 14px'> <img src='au_logo.png' style='width: 125; height:25px;'>";
