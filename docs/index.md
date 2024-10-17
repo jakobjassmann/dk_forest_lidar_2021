@@ -1,7 +1,12 @@
-# DK Forest LiDAR v1.0.0
-Classifications of Denmark's forest quality using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar) and other spatial data.
+# Assmann et al. (in prep) Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion (DK Forest LiDAR v1.0.0)
+Classifications of the conservation value of forest in Denmark using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar) and other spatial data.
 
-**Disclaimer: This project is under development and not yet peer-reviewed.**
+**Disclaimer: This project is currently in peer-review.**
+
+## Results
+- [Leaflet web app - best model only (map of projections)](data_vis_best.html)
+- [Leaflet web app - all models (map of projections)](data_vis_all.html)
+- [Summary stats (area estimates)](summary_stats.html)
 
 ## Project overview
 - [Workflow Overview](workflow.html)
@@ -14,11 +19,6 @@ Classifications of Denmark's forest quality using the [EcoDes-DK15 dataset](http
 ## Model performance
 - [Gradient Boosting performance](gbm_models_performance.html)
 - [Random Forest performance](ranger_models_performance.html)
-
-## Results
-- [Leaflet web app - best model only (map of projections)](data_vis_best.html)
-- [Leaflet web app - all models (map of projections)](data_vis_all.html)
-- [Summary stats (area estimates)](summary_stats.html)
 
 ## Data / Outputs
 - [Summary report - website snapshot v1.0.0 (3.48 MB, PDF))](Assmann_et_al-DK_Forest_Quality_Report_v1.0.0.pdf)
