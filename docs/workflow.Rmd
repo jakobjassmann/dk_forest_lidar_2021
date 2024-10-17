@@ -10,12 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 This document provides an overview on the workflow that we used to generate
-the models for predicting forest quality in Denmark.
+the models for predicting forest conservation value in Denmark.
 
 In brief: 
 
-1. We gathered raster predictors with 10 m res. that we deemed meaningful for predicting the quality of forests in Denmark.
-2. We gathered ~20k annotations for forests with high and low quality in Denmark. 
+1. We gathered raster predictors with 10 m res. that we deemed meaningful for predicting the conservation value of forests in Denmark.
+2. We gathered ~20k annotations for forests with high and low conservation value in Denmark. 
 3. We generated a training dataset of 60k pixels that fell within the annotated forests.
 4. We split the training dataset 80%/20% prior model training using a geographic stratification. 
 5. We trained Gradient Boosting and Random Forest models.

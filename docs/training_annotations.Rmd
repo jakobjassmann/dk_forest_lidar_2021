@@ -15,32 +15,32 @@ library(rnaturalearth)
 ```
 
 This document provides an overview of the forest annotations used for generating the 
-training dataset that forms the base of our forest quality models for Denmark. 
+training dataset that forms the base of our forest conservation value models for Denmark. 
 
 These annotations are vector polygons of forests in Denmark that are of known 
-"high" or "low" quality. We used these polygons to generate a training dataset 
+"high" or "low" conservation value. We used these polygons to generate a training dataset 
 of 60k pixels based on the 10 m grid of Denmark that is used by our models. 
 The grid is defined by the EcoDes-DK15 dataset. A brief description on how the
 final pixel training dataset was generated from the forest 
 annotations can be found at the end of this document. 
 
-Note: What makes a "high" or "low" quality forest is to some degree arbitrary. 
+Note: What makes a "high" or "low" conservation value forest is to some degree arbitrary. 
 Our definitions here are the result of a long discussion and have been developed over
 multiple years. The aim was to arrive at a workable definition that aligns 
 with the current framework of forest designations in Denmark, while also ensuring that 
 enough training data is available. We appreciate that our chosen definitions of 
-forest quality are a simplification and not without flaws (e.g., we assume that 
-all "plantations" are of low forest quality). 
+forest conservation value are a simplification and not without flaws (e.g., we assume that 
+all "plantations" are of low forest conservation value). 
 
 ---
 
-## High quality forests
+## High conservation value forests
 
-Total number of high quality forest polygons: 9400.
+Total number of high conservation value forest polygons: 9400.
 
 ### §25 and §15 forest
 
-The core of the high quality forest annotations is made up by the polygons for 
+The core of the high conservation value forest annotations is made up by the polygons for 
 the designated §25 ("naturmaessigt saerlig vaerdifuld skov") and §15 ("skovnatur") forests. 
 The vector boundaries of these forests were retrieved from "Danmarks Miljøportal" (https://arealinformation.miljoeportal.dk/):
 
@@ -51,7 +51,7 @@ Number of forests: 9044 (§25 forests: 2906; and §15 forests: 6138).
 
 ### Untouched forests and "aftaler om natur"
 
-The two other components of the high quality forest annotations are vector 
+The two other components of the high conservation value forest annotations are vector 
 boundaries from the untouched forests (private and public), as well as areas 
 with agreements on nature ("aftaler om natur"). The vector boundaries of these
 areas were retrieved from "Miljøgis - Ansøgning om skovtilskud for private"  (https://miljoegis3.mim.dk/spatialmapsecure?profile=privatskovtilskud):
@@ -66,9 +66,9 @@ Number of forests: 356 ("untouched": `r 15 + 20 + 37 + 46`; "aftaler om natur": 
 
 ---
 
-## Low quality forests
+## Low conservation value forests
 
-Total number of low quality forest polygons: 10697.
+Total number of low conservation value forest polygons: 10697.
 
 ### "Ikke" §25 forests
 
@@ -91,7 +91,7 @@ The source dataset includes all forests owned by NST. To subset only forests
 that are plantations, we filtered the data by excluding all forests that had 
 an "ANV 4" value of 1, were classified as "urørt" or designated as "historical". 
 We then sub-sampled the plantations to ensure a balanced training dataset between 
-high and low quality forests (target :~10k high & ~10k low quality forests). We drew a sample of 5000 plantations. To account for variation 
+high and low conservation value forests (target :~10k high & ~10k low conservation value forests). We drew a sample of 5000 plantations. To account for variation 
 within stand ages, we stratified the sample based on the following stand ages 
 classes (years): [0, 10], (10, 25], (25, 50], (50, 75], (75, ∞). For each stand 
 age we drew 1000 forests at random. Not all forests that were drawn in the sample
@@ -108,26 +108,26 @@ Number of forests: 4849.
 ## Cleaning and preparation of geometries
 
 We observed some overlap between the assembled annotations for high and low
-quality forests. This overlap included duplicate mappings within each category, as well as some
-duplicate mapping of parts of forests as high and low quality. These inaccuracies
+conservation value forests. This overlap included duplicate mappings within each category, as well as some
+duplicate mapping of parts of forests as high and low conservation value. These inaccuracies
 were expected given the extent of the dataset and the fact that it was assembled
 from multiple sources. To address the issue we carried out a systematic cleaning
 of the geometries (fully reproducible through our source code). 
 
-First, we removed all internal overlap within the high quality geometries. For this
+First, we removed all internal overlap within the high conservation value geometries. For this
 we iteratively removed all internal overlap starting with the p25 forests (internally sorted in the order the polygons were loaded), followed 
 by the private old growth and lastly the p15 forests. We also buffered the geometries,
 using a negative buffer of 10 cm to avoid line-overlaps due to inaccuracies in the geometries. Finally, we removed one
 remaining p15 forest that failed to be filtered out. 
 
-Second, we removed all internal overlap within the low quality geometries, taking
-the same approach as for the high quality geometries except working in prescribed order (the polygons were simpely processed in the order they were loaded). 
-While doing that we also checked for overlap with any high quality geometries and 
+Second, we removed all internal overlap within the low conservation value geometries, taking
+the same approach as for the high conservation value geometries except working in prescribed order (the polygons were simpely processed in the order they were loaded). 
+While doing that we also checked for overlap with any high conservation value geometries and 
 if that was the case removed any overlap. We also buffered the geometries,
 using a negative buffer of 10 cm to avoid line-overlaps due to geometric inaccuracies.
 Finally, we removed one remaining ikke_p25 forest that was duplicated in the dataset. 
 
-The resulting dataset consisted of two type of forest annotations (8915 high and 9720 low quality polygons)
+The resulting dataset consisted of two type of forest annotations (8915 high and 9720 low conservation value polygons)
 with no internal overlap within or between categories. 
 
 ---
@@ -136,18 +136,18 @@ with no internal overlap within or between categories.
 
 ### Pixel sampling
 
-We used the forest annotations (8915 high quality forests and 9720 low
-quality forests) to generate a sample of 60k pixels based on the EcoDes-DK14 grid
-to train our forest quality models. 
+We used the forest annotations (8915 high conservation value forests and 9720 low
+conservation value forests) to generate a sample of 60k pixels based on the EcoDes-DK14 grid
+to train our forest conservation value models. 
 
 The EcoDes-DK15 dataset uses a version of the Danish national grid that divides 
 terrestrial Denmark into 10 m x 10 m cells / pixels (UTM32). 
 For the training dataset we drew a sample of 30k pixels each from within 
-the high quality and the low quality forest polygons. Specifically, the sample 
+the high conservation value and the low conservation value forest polygons. Specifically, the sample 
 was based on the EcoDes-DK15 "dtm10_m" descriptor raster). The sample was drawn
 in the following fashion: First, we drew a random pixel from within each forest 
 polygon (high or low). We then filled in the missing number of pixels to make up 
-30k for each forest quality class (high or low). The filing step was done completely at
+30k for each forest conservation value class (high or low). The filing step was done completely at
 random, drawing from all remaining pixels available per class. The final dataset of pixels
 therefore contained 30k unique pixels from each class. 
 
@@ -176,7 +176,7 @@ Note, that because of the sampling scheme some pixels will be drawn from the sam
 individual forest polygons and the sampled pixels are therefore to some degree 
 not statistically independent (as would samples from neighbouring polygons). However, the aim 
 of our project is not to carry out a statistical analysis, but to train a 
-machine learning classifier for predicting forest quality. The reduction in 
+machine learning classifier for predicting forest conservation value. The reduction in 
 independence of the samples is therefore not an issue, as long as it does not lead
 to over fitting of the models (which it did not). Instead sub-sampling of the 
 forest polygons is likely desirable as it allows us to capture the variation 
