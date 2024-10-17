@@ -2,7 +2,7 @@
 
 **Assmann et al. (in prep) Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion.**
 
-Classifications of the conservation value of forest in Denmark using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar) and other spatial data.
+Classifications of high conservation value of forests in Denmark using the [EcoDes-DK15 dataset](https://github.com/jakobjassmann/ecodes-dk-lidar) and other spatial data.
 
 **Disclaimer: This project is currently in peer-review.**
 
