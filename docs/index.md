@@ -23,9 +23,6 @@ Classifications of high conservation value of forests in Denmark using the [EcoD
 - [Gradient Boosting performance](gbm_models_performance.html)
 - [Random Forest performance](ranger_models_performance.html)
 
-## Summary report
-- [Summary report - website snapshot v1.0.0 (3.48 MB, PDF))](Assmann_et_al-DK_Forest_Quality_Report_v1.0.0.pdf)
-
 ## Data / Outputs
 All data outputs are available on Zendo: <br> 
 - [https://zenodo.org/records/10419006](https://zenodo.org/records/10419006)
@@ -38,6 +35,9 @@ Compressed and cloud optimised rasters & vectors can also be downloaded from AWS
 - [Gradient Boosting Projections Derek's Stratification v1.0.0 (41.5 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_gbm_derekcog_epsg3857_v1.0.0.tif)
 - [Disturbance map v0.9.1 (17.8 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/disturbance_since_2015_cog_epsg3857_v0.1.0.tif)
 - [Training Polygons v0.9.0 (115.7 MB, GeoJson)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/training_polygons_v0.9.0.geojson)
+
+## Summary report
+- [Summary report - website snapshot v1.0.0 (3.48 MB, PDF))](Assmann_et_al-DK_Forest_Quality_Report_v1.0.0.pdf)
 
 ## Auxiliary
 - [Guide on how to visualise cloud optimised rasters](cog_guide.html)
