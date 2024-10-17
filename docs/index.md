@@ -7,7 +7,7 @@ Classifications of high conservation value of forests in Denmark using the [EcoD
 **Disclaimer: This project is currently in peer-review.**
 
 ## Results
-- [Leaflet web app - best model only (map of projections)](data_vis_best.html)
+- [Leaflet web app - best model (map of projections)](data_vis_best.html)
 - [Leaflet web app - all models (map of projections)](data_vis_all.html)
 - [Summary stats (area estimates)](summary_stats.html)
 
@@ -27,9 +27,10 @@ Classifications of high conservation value of forests in Denmark using the [EcoD
 - [Summary report - website snapshot v1.0.0 (3.48 MB, PDF))](Assmann_et_al-DK_Forest_Quality_Report_v1.0.0.pdf)
 
 ## Data / Outputs
-All data outputs are available on Zendo: https://zenodo.org/records/10419006
+All data outputs are available on Zendo: <br> 
+- [https://zenodo.org/records/10419006](https://zenodo.org/records/10419006)
 
-The compressed and cloud optimised rasters & vectors can also be downloaded from AWS: 
+Compressed and cloud optimised rasters & vectors can also be downloaded from AWS: 
 
 - [Best model: Random Forest Projections BIOWIDE v1.0.0 (40.2 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_biowide_cog_epsg3857_v1.0.0.tif)
 - [Random Forest Projections Derek's Stratification v1.0.0 (40.2 MB, GeoTiff)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/forest_quality_ranger_derek_cog_epsg3857_v1.0.0.tif)
