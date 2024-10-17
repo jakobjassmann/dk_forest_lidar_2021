@@ -23,7 +23,7 @@ Classifications of high conservation value of forests in Denmark using the [EcoD
 - [Gradient Boosting performance](gbm_models_performance.html)
 - [Random Forest performance](ranger_models_performance.html)
 
-## Summary report (website snapshot - 17 Oct 2024)
+## Summary report
 - [Summary report - website snapshot v1.0.0 (3.48 MB, PDF))](Assmann_et_al-DK_Forest_Quality_Report_v1.0.0.pdf)
 
 ## Data / Outputs
