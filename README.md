@@ -1,12 +1,13 @@
-# Denmark forest quality projections - code repository
+# Assmann et al. (in prep) Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion
+Code repository <br>
+Last update: 16 October 2024.<br>
+
 
 **Summary reports, data visualisations and downlads can be found on:**<br> https://jakobjassmann.github.io/dk_forest_lidar_2021/
 
-Last update: 26 September 2023.<br>
 
-Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Signe Normand 
 
-Code repository accompanying Assmann et al. (in prep) "*Airborne laser scanning data fusion and machine learning identify forests of high conservation value in Denmark*".
+Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand 
 
 ## Content
 
@@ -33,9 +34,11 @@ data/                                   - Files and placeholder folders containi
   |- training_data/                     - Pixel centre coordinated and extracted predictor values for the model training
   |- variograms/                        - Variogram samples for predictor variables
 docs/                                   - Figure outputs, R Markdown reports and website documents
+  |- confusion_matrices                 - Confusion matrices as html tables for the best fitting models
   |- figures/                           - Figrues for the manuscript
   |- gbm_models_performance_files/      - Auxiliary files for the gbm_models_performance.html report
   |- js/                                - Folder containing JavaScript source files required for the webapp
+  |- sampling_size_sensitivity/         - Outputs from the sensitivity analysis regarding the sampling size. 
   |- ranger_models_performance_files/   - Auxiliary files for the ranger_models_performance.html report
   |_ training_annotations_files/        - Auxiliary files for the training_annotation.html report
   |- variograms/                        - Plots for the predictor variograms
