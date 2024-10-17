@@ -38,4 +38,4 @@ Classifications of high conservation value of forests in Denmark using the [EcoD
 ---
 <img src='au_logo.png' style='width: 250; height:50px;'><img src='sustainscapes_logo.png' style='width: 240; height:60px;'>
 
-[last update: 9 August 2022]
+[last update: 17 October 2024]
