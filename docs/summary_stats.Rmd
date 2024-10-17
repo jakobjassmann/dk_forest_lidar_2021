@@ -16,14 +16,14 @@ library(ggplot2)
 library(kableExtra)
 ```
 
-This document provides summary stats (area) for the forest quality projections.
+This document provides summary stats (area) for the forest conservation value projections.
 We show the statistics for all four models tested in our analysis. 
 
 Content:
 
 <!-- 1. Forest area in Denmark according to Basemap 03. -->
 1. Forest area in Denmark according to Bjerreskov et al. 2021.
-2. Training data area: High quality and low quality forests.
+2. Training data area: High conservation value and low conservation value forests.
 3. Disturbance detected in forests overall.
 4. Gradient Boosting model summary stats (BIOWIDE).
 5. Random Forest model summary stats (BIOWIDE).
@@ -108,11 +108,11 @@ tibble(
                 full_width = FALSE)
 ```
 
-## Training data area: High quality and low quality forests
+## Training data area: High conservation value and low conservation value forests
 
 Here you can see the area covered by our training data. Including both the
-high quality forests with designations (p15, p25 and private old growth), as well as the 
-low quality training polygons. The proportions are given relative to the total area of
+high conservation value forests with designations (p15, p25 and private old growth), as well as the 
+low conservation value training polygons. The proportions are given relative to the total area of
 forest according to the forest mask generated from Bjerreskov et al. 2021 (see above). 
 
 ```{r designations_area, echo = FALSE}
@@ -183,8 +183,8 @@ low_quality_forest <- gbm_biowide_projections == 2
 low_quality_forest_area <- (global(low_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("high quality forest",
-             "low quality forest",
+  `Type` = c("high conservation value forest",
+             "low conservation value forest",
              "total forest"),
   `Area [km²]` = round(c(high_quality_forest_area / 1000^2,
                          low_quality_forest_area / 1000^2,
@@ -209,8 +209,8 @@ low_quality_forest_disturbed <- mask(low_quality_forest, disturbance_mask_applie
 low_quality_forest_disturbed_area <- (global(low_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "total high quality forest"),
+  `Type` = c("disturbed high conservation value forest",
+             "total high conservation value forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          high_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / high_quality_forest_area,
@@ -221,8 +221,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed low quality forest",
-             "total low quality forest"),
+  `Type` = c("disturbed low conservation value forest",
+             "total low conservation value forest"),
   `Area [km²]` = round(c(low_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * low_quality_forest_disturbed_area / low_quality_forest_area,
@@ -233,8 +233,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "disturbed low quality forest",
+  `Type` = c("disturbed high conservation value forest",
+             "disturbed low conservation value forest",
              "total disturbed forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_disturbed_area / 1000^2,
@@ -260,8 +260,8 @@ low_quality_forest <- ranger_biowide_projections == 2
 low_quality_forest_area <- (global(low_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("high quality forest",
-             "low quality forest",
+  `Type` = c("high conservation value forest",
+             "low conservation value forest",
              "total forest"),
   `Area [km²]` = round(c(high_quality_forest_area / 1000^2,
                          low_quality_forest_area / 1000^2,
@@ -286,8 +286,8 @@ low_quality_forest_disturbed <- mask(low_quality_forest, disturbance_mask_applie
 low_quality_forest_disturbed_area <- (global(low_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "total high quality forest"),
+  `Type` = c("disturbed high conservation value forest",
+             "total high conservation value forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          high_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / high_quality_forest_area,
@@ -298,8 +298,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed low quality forest",
-             "total low quality forest"),
+  `Type` = c("disturbed low conservation value forest",
+             "total low conservation value forest"),
   `Area [km²]` = round(c(low_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * low_quality_forest_disturbed_area / low_quality_forest_area,
@@ -310,8 +310,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "disturbed low quality forest",
+  `Type` = c("disturbed high conservation value forest",
+             "disturbed low conservation value forest",
              "total disturbed forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_disturbed_area / 1000^2,
@@ -337,8 +337,8 @@ low_quality_forest <- gbm_derek_projections == 2
 low_quality_forest_area <- (global(low_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("high quality forest",
-             "low quality forest",
+  `Type` = c("high conservation value forest",
+             "low conservation value forest",
              "total forest"),
   `Area [km²]` = round(c(high_quality_forest_area / 1000^2,
                          low_quality_forest_area / 1000^2,
@@ -366,8 +366,8 @@ low_quality_forest_disturbed <- mask(low_quality_forest, disturbance_mask_applie
 low_quality_forest_disturbed_area <- (global(low_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "total high quality forest"),
+  `Type` = c("disturbed high conservation value forest",
+             "total high conservation value forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          high_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / high_quality_forest_area,
@@ -378,8 +378,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed low quality forest",
-             "total low quality forest"),
+  `Type` = c("disturbed low conservation value forest",
+             "total low conservation value forest"),
   `Area [km²]` = round(c(low_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * low_quality_forest_disturbed_area / low_quality_forest_area,
@@ -390,8 +390,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "disturbed low quality forest",
+  `Type` = c("disturbed high conservation value forest",
+             "disturbed low conservation value forest",
              "total disturbed forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_disturbed_area / 1000^2,
@@ -417,8 +417,8 @@ low_quality_forest <- ranger_derek_projections == 2
 low_quality_forest_area <- (global(low_quality_forest, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("high quality forest",
-             "low quality forest",
+  `Type` = c("high conservation value forest",
+             "low conservation value forest",
              "total forest"),
   `Area [km²]` = round(c(high_quality_forest_area / 1000^2,
                          low_quality_forest_area / 1000^2,
@@ -446,8 +446,8 @@ low_quality_forest_disturbed <- mask(low_quality_forest, disturbance_mask_applie
 low_quality_forest_disturbed_area <- (global(low_quality_forest_disturbed, "sum", na.rm = T) * (10 * 10))$sum[1]
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "total high quality forest"),
+  `Type` = c("disturbed high conservation value forest",
+             "total high conservation value forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          high_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * high_quality_forest_disturbed_area / high_quality_forest_area,
@@ -458,8 +458,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed low quality forest",
-             "total low quality forest"),
+  `Type` = c("disturbed low conservation value forest",
+             "total low conservation value forest"),
   `Area [km²]` = round(c(low_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_area / 1000^2), 2),
   `Proportion [%]` = formatC(round(c(100 * low_quality_forest_disturbed_area / low_quality_forest_area,
@@ -470,8 +470,8 @@ tibble(
                 full_width = FALSE)
 
 tibble(
-  `Type` = c("disturbed high quality forest",
-             "disturbed low quality forest",
+  `Type` = c("disturbed high conservation value forest",
+             "disturbed low conservation value forest",
              "total disturbed forest"),
   `Area [km²]` = round(c(high_quality_forest_disturbed_area / 1000^2,
                          low_quality_forest_disturbed_area / 1000^2,
