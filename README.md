@@ -97,7 +97,7 @@ The forest conservation value models are fitted and fine tuned using the scripts
 
 **Projection across Denmark**
 
-The models can then be used to project the forest quality predictions across Denmark. The projection scripts also prepare the outputs as cloud optimised geotiffs for webhosting and visualisation using the web app. 
+The models can then be used to project the forest conservation value predictions across Denmark. The projection scripts also prepare the outputs as cloud optimised geotiffs for webhosting and visualisation using the web app. 
 
 - Projection script: `scripts/projections/project_pixels.R`
 
@@ -109,13 +109,13 @@ The JS and HTML source code for the HTML file that generates the web app can be 
 
 ## 4. Acknowledgements
 
-We would like to acknowledge our funders. We woul also like to thank Thomas Nord Larsen, Bjørn Ole Ejlersen, Bjarne Aabrandt Jensen and Ane Brunbjerg for sharing tabular, vector and raster data with us that were key to faciliating the model predictions.
+We would like to acknowledge our funders. We woul also like to thank Bjørn Ole Ejlersen, Bjarne Aabrandt Jensen and Ane Brunbjerg for sharing tabular, vector and raster data with us that were key to faciliating the model predictions.
 
 [\[back to content\]](#content)
 
 ## 5. Citation
 
-Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand. (in prep). "Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion". https://github.com/jakobjassmann/dk_forest_lidar_2021
+Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand. (in prep). Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion. https://github.com/jakobjassmann/dk_forest_lidar_2021
 
 [\[back to content\]](#content)
 
