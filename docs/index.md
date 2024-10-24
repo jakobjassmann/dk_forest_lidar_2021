@@ -37,7 +37,7 @@ Compressed and cloud optimised rasters & vectors can also be downloaded from AWS
 - [Training Polygons v0.9.0 (115.7 MB, GeoJson)](https://dkforestlidar2022.s3.eu-central-1.amazonaws.com/training_polygons_v0.9.0.geojson)
 
 ## Summary report
-- [Summary report - website snapshot v1.0.0 (3.48 MB, PDF))](Assmann_et_al-DK_Forest_Quality_Report_v1.0.0.pdf)
+- [Summary report - website snapshot v1.0.1 (3.48 MB, PDF))](Assmann_et_al-DK_Forest_Quality_Report_v1.0.1.pdf)
 
 ## Auxiliary
 - [Guide on how to visualise cloud optimised rasters](cog_guide.html)
