@@ -1,15 +1,15 @@
-# Assmann et al. (in prep) Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion
+# Assmann et al. (2025) Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion
 Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand <br>
 
-**Code repository accomanying Assmann et al. (in prep)**<br>
-Last update: 16 October 2024.<br>
+**Code repository accomanying Assmann et al. (2025)**<br>
+Last update: 6 January 2025.<br>
 
 
 **Summary reports, data visualisations and downlads can be found on:**<br> https://jakobjassmann.github.io/dk_forest_lidar_2021/
 
 ## Content
 
-This repository contains all scripts and workflows required to regenerate the analysis presented in Assmann et al (in prep). 
+This repository contains all scripts and workflows required to regenerate the analysis presented in Assmann et al (2025). 
 
 - [1. Folder structure overview](#1-folder-structure-overview)
 - [2. Required source data](#2-required-source-data)
@@ -115,7 +115,7 @@ We would like to acknowledge our funders. We woul also like to thank Bjørn Ole 
 
 ## 5. Citation
 
-Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand. (in prep). Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion. https://github.com/jakobjassmann/dk_forest_lidar_2021
+Jakob J. Assmann, Pil B. M. Pedersen, Jesper E. Moeslund, Cornelius Senf, Urs A. Treier, Derek Corcoran, Zsófia Koma, Thomas Nord-Larsen, Signe Normand. (2025). Temperate forests of high conservation value are successfully identified by satellite and LiDAR data fusion. DOI: TBD. 
 
 [\[back to content\]](#content)
 
